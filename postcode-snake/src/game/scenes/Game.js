@@ -19,6 +19,7 @@ export class Game extends Scene
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds.png');
+        this.load.image('meat', 'meat.png');
 
         this.load.spritesheet('dog', 'dog.png', {
             frameWidth: 32,
@@ -26,6 +27,8 @@ export class Game extends Scene
         });
 
         this.load.json('roadMaze', '../road_maze.json');
+
+        
     }
 
     create ()
