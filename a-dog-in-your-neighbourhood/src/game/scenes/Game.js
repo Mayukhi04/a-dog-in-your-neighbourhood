@@ -19,7 +19,7 @@ export class Game extends Scene
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds.png');
-        this.load.image('meat', 'meat.png');
+        this.load.image('field', 'red_flower.jpg')
 
         this.load.spritesheet('dog', 'dog.png', {
             frameWidth: 32,
@@ -53,13 +53,18 @@ export class Game extends Scene
         const containerX = cx;
         const containerY = cy + 20;
 
-        // container background
+        // container field background
         const gameContainer = this.add.container(containerX, containerY);
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
 
-        const rect = this.add.rectangle(0, 0, gameW-120, gameH-100, 0x000000);
-        gameContainer.add(rect);
+        const tilesW = gameW - 120;
+        const tilesH = gameH - 100;
+        const fieldTiles = this.add.tileSprite(0, 0, tilesW, tilesH, 'field');
+
+        fieldTiles.setTileScale(0.75, 0.75); 
+
+        gameContainer.add(fieldTiles);
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -86,7 +91,7 @@ export class Game extends Scene
         // Draw roads inside the game container
         const graphics = this.add.graphics();
 
-        graphics.lineStyle(10, 0xffffff, 1);
+        graphics.lineStyle(10, 0xB69F66, 1);
 
         for (const road of mapData.roads) {
             if (road.length < 2) {
@@ -177,35 +182,35 @@ export class Game extends Scene
             }
         }
 
-        this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 24);
+        this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(1.5);
         gameContainer.add(this.puppy);
 
         // puppy walking logic
         this.anims.create({
             key: 'walk-down',
-            frames: this.anims.generateFrameNumbers('dog', { start: 40, end: 42 }),
+            frames: this.anims.generateFrameNumbers('dog', { start: 32, end: 34 }),
             frameRate: 10,
             repeat: -1
         });
 
         this.anims.create({
             key: 'walk-left',
-            frames: this.anims.generateFrameNumbers('dog', { start: 56, end: 58 }),
+            frames: this.anims.generateFrameNumbers('dog', { start: 48, end: 50 }),
             frameRate: 10,
             repeat: -1
         });
 
         this.anims.create({
             key: 'walk-right',
-            frames: this.anims.generateFrameNumbers('dog', { start: 8, end: 10 }),
+            frames: this.anims.generateFrameNumbers('dog', { start: 0, end: 2 }),
             frameRate: 10,
             repeat: -1
         });
 
         this.anims.create({
             key: 'walk-up',
-            frames: this.anims.generateFrameNumbers('dog', { start: 24, end: 26 }),
+            frames: this.anims.generateFrameNumbers('dog', { start: 16, end: 18 }),
             frameRate: 10,
             repeat: -1
         });
