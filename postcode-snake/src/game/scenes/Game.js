@@ -1,5 +1,4 @@
-
-import { Scene } from 'phaser';
+import { Scene, Actions } from 'phaser';
 
 export class Game extends Scene
 {
@@ -46,6 +45,19 @@ export class Game extends Scene
 
         const rect = this.add.rectangle(0, 0, gameW-120, gameH-100, 0x000000);
         gameContainer.add(rect);
+        
+        // container visual effects
+        gameContainer.enableFilters();
+
+        gameContainer.filters.internal.addPixelate(1);
+
+        Actions.AddEffectBloom(gameContainer, {
+            threshold: 0.3,
+            blurRadius: 2,
+            blurSteps: 2,
+            blendAmount: 1,
+            useInternal: true
+        });
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
