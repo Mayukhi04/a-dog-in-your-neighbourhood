@@ -6,7 +6,7 @@ import { AUTO, Scale,Game } from 'phaser';
 const config = {
     type: AUTO,
     parent: 'game-container',
-    backgroundColor: '#028af8',
+    backgroundColor: '#ffffff',
     scale: {
         mode: Scale.RESIZE,
         autoCenter: Scale.CENTER_BOTH
