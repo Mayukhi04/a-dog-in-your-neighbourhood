@@ -41,7 +41,7 @@ export class Game extends Scene
     {
         this.load.setPath('assets');
         
-        this.load.image('overlay', 'ds.png');
+        this.load.image('overlay', 'ds.jpeg');
         this.load.image('field', 'red_flower.jpg')
 
         this.load.spritesheet('dog', 'dog.png', {
@@ -90,19 +90,25 @@ export class Game extends Scene
         const cx = this.cameras.main.centerX;
         const cy = this.cameras.main.centerY;
 
-        this.dsOverlay = this.add.image(cx-35, cy+95, 'overlay');
-        const dsOverlayScale = Math.max(screenW / this.dsOverlay.width, screenH / this.dsOverlay.height);
-        this.dsOverlay.setScale(dsOverlayScale*1.27);
-        this.dsOverlay.setDepth(0);
+        const source = this.textures.get('overlay').getSourceImage();
+        const aspectRatio = source.height / source.width;
+        const bgHeight = screenW * aspectRatio;
+
+        const dsOverlay = this.add.image(cx, screenH - (bgHeight / 2), 'overlay');
+        dsOverlay.setDisplaySize(screenW, bgHeight);
+        dsOverlay.setDepth(0);
+
+        this.cameras.main.setScroll(0, 0);
 
         // actual game container positioning
         const gameW = 1024;
         const gameH = 768;
 
-        const gameScale = Math.min(screenW / gameW, screenH / gameH)/1.4;
+        const usableHeight = screenH * 0.74;
+        const gameScale = Math.min(screenW / gameW, usableHeight / gameH);
 
         const containerX = cx;
-        const containerY = cy + 20;
+        const containerY = screenH - (gameH * gameScale / 2) - (screenH * 0.09);
 
         // container field background
         const gameContainer = this.add.container(containerX, containerY);

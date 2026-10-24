@@ -1,8 +1,7 @@
 import { Game as MainGame } from './scenes/Game';
-import { AUTO, Scale,Game } from 'phaser';
+import { MenuScene } from './scenes/MenuScene';
+import { AUTO, Scale, Game } from 'phaser';
 
-// Find out more information about the Game Config at:
-// https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
 const config = {
     type: AUTO,
     parent: 'game-container',
@@ -12,12 +11,13 @@ const config = {
         autoCenter: Scale.CENTER_BOTH
     },
     scene: [
+        MenuScene,
         MainGame
     ]
 };
 
 const StartGame = (parent) => {
     return new Game({ ...config, parent });
-}
+};
 
 export default StartGame;
