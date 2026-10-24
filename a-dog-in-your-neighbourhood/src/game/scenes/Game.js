@@ -8,11 +8,15 @@ export class Game extends Scene
     moveSpeed = 3;
     lastAnim = 'walk-up';
     lastHorizontalDir = 'right'; 
-    nextSoundTime = 0;
     lastMovedTime = 0;
+    nextSoundTime = 0;
 
     score = 0;
-
+  
+    timerVal = 30;
+    timerPassed = 0;
+    timer;
+  
     roadSegments = [];
 
     bgMusic;
@@ -95,6 +99,15 @@ export class Game extends Scene
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
+
+        this.timer = this.add.text(300, -200, `Timer: ${this.timerVal}`, {
+            fontFamily: 'Arial',
+            fontSize: '32px',
+            color: '#ffffff',
+            backgroundColor: '#000000'
+        });
+
+        
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -212,6 +225,10 @@ export class Game extends Scene
             }
         }
 
+        //add text here so it shows on top of roads
+        gameContainer.add(this.timer);
+        
+        
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(1.5);
         gameContainer.add(this.puppy);
@@ -260,6 +277,8 @@ export class Game extends Scene
             right: 'D'
         });
 
+        
+
     }
 
     update (time, delta)
@@ -267,6 +286,17 @@ export class Game extends Scene
         let moveX = 0;
         let moveY = 0;
         let currentAnim = null;
+
+        if (this.timerVal > 0) {
+            this.timerPassed += delta;
+
+            if (this.timerPassed >= 1000) {
+                const passedSeconds = Math.floor(this.timerPassed / 1000);
+                this.timerVal = Math.max(0, this.timerVal - passedSeconds);
+                this.timerPassed %= 1000;
+                this.timer.setText(`Timer: ${this.timerVal}`);
+            }
+        }
 
         if (time >= this.nextSoundTime) {
             if (Math.random() < 0.001) {
@@ -374,6 +404,8 @@ export class Game extends Scene
 
         if (distance < 20) {
             this.chompSFX.play();
+            this.timerVal = this.timerVal + 5;
+            this.timer.setText(`Timer: ${this.timerVal} +`);
             this.spawnMeat();
         }
 
