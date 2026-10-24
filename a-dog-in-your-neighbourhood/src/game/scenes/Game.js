@@ -10,6 +10,8 @@ export class Game extends Scene
 
     roadSegments = [];
 
+    bgMusic;
+
     constructor ()
     {
         super('Game');
@@ -30,10 +32,20 @@ export class Game extends Scene
         this.load.json('roadMaze', '../road_maze.json');
 
         this.load.image('meat', 'meat.png');
+
+        this.load.audio('dog_theme', 'music/dog_theme.mp3');
     }
 
     create ()
     {
+        // set background music
+        this.bgMusic = this.sound.add('dog_theme', {
+            volume: 0.5,
+            loop: true
+        });
+
+        this.bgMusic.play();
+
         // ds overlay positioning
         const screenW = this.cameras.main.width;
         const screenH = this.cameras.main.height;
@@ -224,6 +236,13 @@ export class Game extends Scene
         // set up keyboard arrow keys
         this.cursors = this.input.keyboard.createCursorKeys();
 
+        this.wasdKeys = this.input.keyboard.addKeys({
+            up: 'W',
+            left: 'A',
+            down: 'S',
+            right: 'D'
+        });
+
     }
 
     update ()
@@ -235,18 +254,18 @@ export class Game extends Scene
         if (!this.cursors || !this.puppy) return;
 
         // check inputs and assign the correct animation string
-        if (this.cursors.left.isDown) {
+        if (this.cursors.left.isDown || this.wasdKeys.left.isDown) {
             moveX = -1;
             currentAnim = 'walk-left';
-        } else if (this.cursors.right.isDown) {
+        } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown) {
             moveX = 1;
             currentAnim = 'walk-right';
         }
 
-        if (this.cursors.up.isDown) {
+        if (this.cursors.up.isDown || this.wasdKeys.up.isDown) {
             moveY = -1;
             currentAnim = 'walk-up';
-        } else if (this.cursors.down.isDown) {
+        } else if (this.cursors.down.isDown || this.wasdKeys.down.isDown) {
             moveY = 1;
             currentAnim = 'walk-down';
         }
