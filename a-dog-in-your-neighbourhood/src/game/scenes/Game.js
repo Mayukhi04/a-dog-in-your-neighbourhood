@@ -5,7 +5,8 @@ export class Game extends Scene
     cursors;
     puppy;
     moveSpeed = 3;
-    lastAnim = 'walk-up'; 
+    lastAnim = 'walk-up';
+    nextSoundTime = 0;
     score = 0;
 
     roadSegments = [];
@@ -33,14 +34,14 @@ export class Game extends Scene
 
         this.load.image('meat', 'meat.png');
 
-        this.load.audio('dog_theme', 'music/dog_theme.mp3');
-
-        this.load.audio('chomp_theme', 'music/chomp.mp3');
+        this.load.audio('dog_theme', 'audio/dog_theme.mp3');
+        this.load.audio('chomp_theme', 'audio/chomp.mp3');
+        this.load.audio('yip', 'audio/yip.mp3');
     }
 
     create ()
     {
-        // set background music
+        // load audio and play background music
         this.bgMusic = this.sound.add('dog_theme', {
             volume: 0.5,
             loop: true
@@ -50,6 +51,11 @@ export class Game extends Scene
 
         this.chompSFX = this.sound.add('chomp_theme', {
             volume: 5,
+            loop: false
+        });
+
+        this.yipSFX = this.sound.add('yip', {
+            volume: 1,
             loop: false
         });
 
@@ -252,11 +258,18 @@ export class Game extends Scene
 
     }
 
-    update ()
+    update (time, delta)
     {
         let moveX = 0;
         let moveY = 0;
         let currentAnim = null;
+
+        if (time >= this.nextSoundTime) {
+            if (Math.random() < 0.001) {
+                this.yipSFX.play();
+                this.nextSoundTime = time + 2000; 
+            }
+        }
 
         if (!this.cursors || !this.puppy) return;
 
