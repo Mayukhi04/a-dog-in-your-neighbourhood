@@ -48,6 +48,11 @@ export class Game extends Scene
 
         this.bgMusic.play();
 
+        this.chompSFX = this.sound.add('chomp_theme', {
+            volume: 5,
+            loop: false
+        });
+
         // ds overlay positioning
         const screenW = this.cameras.main.width;
         const screenH = this.cameras.main.height;
@@ -330,13 +335,7 @@ export class Game extends Scene
         );
 
         if (distance < 20) {
-            // set background music
-            this.sound.add('chomp_theme', {
-                volume: 1,
-            }).play()
-
-            this.bgMusic.play();
-            
+            this.chompSFX.play();
             this.spawnMeat();
         }
 
