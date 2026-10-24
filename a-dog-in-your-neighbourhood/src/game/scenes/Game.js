@@ -5,9 +5,11 @@ export class Game extends Scene
     cursors;
     puppy;
     moveSpeed = 3;
-    lastAnim = 'walk-up'; 
+    lastAnim = 'walk-up';
 
     roadSegments = [];
+
+    bgMusic;
 
     constructor ()
     {
@@ -27,10 +29,20 @@ export class Game extends Scene
         });
 
         this.load.json('roadMaze', '../road_maze.json');
+
+        this.load.audio('dog_theme', 'music/dog_theme.mp3');
     }
 
     create ()
     {
+        // set background music
+        this.bgMusic = this.sound.add('dog_theme', {
+            volume: 0.5,
+            loop: true
+        });
+
+        this.bgMusic.play();
+
         // ds overlay positioning
         const screenW = this.cameras.main.width;
         const screenH = this.cameras.main.height;
