@@ -4,13 +4,19 @@ export class Game extends Scene
 {
     cursors;
     puppy;
+
     moveSpeed = 3;
     lastAnim = 'walk-up';
+    lastHorizontalDir = 'right'; 
+    lastMovedTime = 0;
     nextSoundTime = 0;
+
+    score = 0;
+  
     timerVal = 30;
     timerPassed = 0;
     timer;
-
+  
     roadSegments = [];
 
     bgMusic;
@@ -305,9 +311,11 @@ export class Game extends Scene
         if (this.cursors.left.isDown || this.wasdKeys.left.isDown) {
             moveX = -1;
             currentAnim = 'walk-left';
+            this.lastHorizontalDir = 'left';
         } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown) {
             moveX = 1;
             currentAnim = 'walk-right';
+            this.lastHorizontalDir = 'right';
         }
 
         if (this.cursors.up.isDown || this.wasdKeys.up.isDown) {
@@ -321,6 +329,7 @@ export class Game extends Scene
         // execute movement and animations
         if (moveX !== 0 || moveY !== 0) 
         {
+            this.lastMovedTime = time;
 
             // normalise speed if moving diagonally
             let speed = this.moveSpeed;
@@ -359,13 +368,31 @@ export class Game extends Scene
         }
         else 
         {
-            // handle idle state based on the last direction walked
-            this.puppy.stop();
-            
-            if (this.puppy.anims.currentAnim) {
-                const currentFrames = this.puppy.anims.currentAnim.frames;
-                if (currentFrames && currentFrames.length > 0) {
-                    this.puppy.setFrame(currentFrames[0].frame.name);
+            // lay down if idle for 5+ seconds
+            if (this.lastMovedTime === 0) {
+                this.lastMovedTime = time;
+            }
+
+            if (time - this.lastMovedTime > 5000) {
+                this.puppy.anims.stop();
+
+                if (this.lastHorizontalDir === 'left') 
+                {
+                    this.puppy.setFrame(51);
+                } 
+                else 
+                {
+                    this.puppy.setFrame(3);
+                }
+            } else {
+                // handle idle state based on the last direction walked
+                this.puppy.stop();
+                
+                if (this.puppy.anims.currentAnim) {
+                    const currentFrames = this.puppy.anims.currentAnim.frames;
+                    if (currentFrames && currentFrames.length > 0) {
+                        this.puppy.setFrame(currentFrames[0].frame.name);
+                    }
                 }
             }
         }
