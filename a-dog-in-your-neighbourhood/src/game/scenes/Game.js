@@ -28,7 +28,7 @@ export class Game extends Scene
 
         this.load.json('roadMaze', '../road_maze.json');
 
-        
+        this.load.image('meat', 'meat.png');
     }
 
     create ()
@@ -214,6 +214,10 @@ export class Game extends Scene
             frameRate: 10,
             repeat: -1
         });
+
+        this.meat = this.add.sprite(spawnX, spawnY, 'meat');
+        this.meat.setScale(-0.08);
+        gameContainer.add(this.meat);
 
         // set up keyboard arrow keys
         this.cursors = this.input.keyboard.createCursorKeys();
