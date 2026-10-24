@@ -1,16 +1,31 @@
 # download oproad_gb.gpkg from https://osdatahub.os.uk/data/downloads/open/OpenRoads
 
-import geopandas as gpd
-import requests
+import argparse
 import json
 from pathlib import Path
+
+import geopandas as gpd
+import requests
 from shapely.geometry import box
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate a road maze JSON for a UK postcode.")
+    parser.add_argument("postcode", nargs="?", default=None, help="UK postcode to generate a map for")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional output path for the generated JSON. Defaults to the existing project map file.",
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
+postcode = (args.postcode or input("Enter a UK postcode: ")).strip()
 
 # Configuration
 script_folder = Path(__file__).resolve().parent
 gpkg_path = script_folder / "oproad_gb.gpkg"
-
-postcode = input("Enter a UK postcode: ").strip()
 
 # Physical aspect ratio of the cut-out: 62 mm x 46 mm
 cutout_width_mm = 62
@@ -98,7 +113,11 @@ game_map = {
     "roads": features,
 }
 
-output_path = script_folder / "../postcode-snake/public/road_maze.json"
+if args.output:
+    output_path = Path(args.output)
+else:
+    output_path = script_folder / "../a-dog-in-your-neighbourhood/public/road_maze.json"
+
 output_path.parent.mkdir(parents=True, exist_ok=True)
 
 with open(output_path, "w") as f:

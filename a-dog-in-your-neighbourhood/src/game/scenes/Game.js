@@ -112,10 +112,9 @@ export class Game extends Scene
         gameContainer.add(fieldTiles);
 
         this.timer = this.add.text(300, -200, `Timer: ${this.timerVal}`, {
-            fontFamily: 'Arial',
-            fontSize: '32px',
+            fontFamily: 'PixelFont',
+            fontSize: '80px',
             color: '#ffffff',
-            backgroundColor: '#000000'
         });
 
         // Get the exported road data
