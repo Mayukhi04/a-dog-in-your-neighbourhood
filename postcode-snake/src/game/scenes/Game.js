@@ -1,7 +1,11 @@
-import { Scene, Actions } from 'phaser';
+import { Scene, Actions, Input } from 'phaser';
 
 export class Game extends Scene
 {
+    cursors;
+    puppy;
+    moveSpeed = 3;
+
     constructor ()
     {
         super('Game');
@@ -12,6 +16,11 @@ export class Game extends Scene
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds.png');
+
+        this.load.spritesheet('dog', 'dog.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
 
         this.load.json('roadMaze', '../road_maze.json');
     }
@@ -45,19 +54,6 @@ export class Game extends Scene
 
         const rect = this.add.rectangle(0, 0, gameW-120, gameH-100, 0x000000);
         gameContainer.add(rect);
-        
-        // container visual effects
-        gameContainer.enableFilters();
-
-        gameContainer.filters.internal.addPixelate(1);
-
-        Actions.AddEffectBloom(gameContainer, {
-            threshold: 0.3,
-            blurRadius: 2,
-            blurSteps: 2,
-            blendAmount: 1,
-            useInternal: true
-        });
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -108,7 +104,111 @@ export class Game extends Scene
             graphics.strokePath();
         }
 
-        // Add the roads to the existing container
+        // add road to container with visual effects
+        graphics.enableFilters();
+
+        graphics.filters.internal.addPixelate(1);
+
+        Actions.AddEffectBloom(graphics, {
+            threshold: 0.3,
+            blurRadius: 2,
+            blurSteps: 2,
+            blendAmount: 1,
+            useInternal: true
+        });
+        
         gameContainer.add(graphics);
+
+        // dog walking logic
+        this.puppy = this.add.sprite(0, 0, 'dog', 24);
+        this.puppy.setScale(1.5)
+        gameContainer.add(this.puppy);
+
+        this.anims.create({
+            key: 'walk-down',
+            frames: this.anims.generateFrameNumbers('dog', { start: 40, end: 42 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk-left',
+            frames: this.anims.generateFrameNumbers('dog', { start: 56, end: 58 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk-right',
+            frames: this.anims.generateFrameNumbers('dog', { start: 8, end: 10 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk-up',
+            frames: this.anims.generateFrameNumbers('dog', { start: 24, end: 26 }),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        // set up keyboard arrow keys
+        this.cursors = this.input.keyboard.createCursorKeys();
+
     }
+
+    // keep track of last played animation to set the correct idle frame
+    lastAnim = 'walk-up'; 
+
+    update ()
+    {
+        let moveX = 0;
+        let moveY = 0;
+        let currentAnim = null;
+
+        if (!this.cursors || !this.puppy) return;
+
+        // check inputs and assign the correct animation string
+        if (this.cursors.left.isDown) {
+            moveX = -1;
+            currentAnim = 'walk-left';
+        } else if (this.cursors.right.isDown) {
+            moveX = 1;
+            currentAnim = 'walk-right';
+        }
+
+        if (this.cursors.up.isDown) {
+            moveY = -1;
+            currentAnim = 'walk-up';
+        } else if (this.cursors.down.isDown) {
+            moveY = 1;
+            currentAnim = 'walk-down';
+        }
+
+        // execute movement and animations
+        if (moveX !== 0 || moveY !== 0) 
+        {
+            this.puppy.x += moveX * this.moveSpeed;
+            this.puppy.y += moveY * this.moveSpeed;
+
+            if (currentAnim && this.anims.exists(currentAnim)) {
+                this.puppy.play(currentAnim, true);
+                this.lastAnim = currentAnim;
+            }
+        }
+        else 
+        {
+            // handle idle state based on the last direction walked
+            this.puppy.stop();
+            
+            // set the dog to frame 0 of whatever animation row he was last using
+            if (this.puppy.anims.currentAnim) {
+                const currentFrames = this.puppy.anims.currentAnim.frames;
+                if (currentFrames && currentFrames.length > 0) {
+                    this.puppy.setFrame(currentFrames[0].frame.name);
+                }
+            }
+        }
+    }
+
 }
