@@ -15,9 +15,10 @@
   },
   "homepage": "https://github.com/phaserjs/template-vite#readme",
   "scripts": {
-    "dev": "node log.js dev & vite --config vite/config.dev.mjs",
+    "dev": "node server.js & vite --config vite/config.dev.mjs",
     "build": "node log.js build & vite build --config vite/config.prod.mjs",
-    "dev-nolog": "vite --config vite/config.dev.mjs",
+    "dev-nolog": "node server.js & vite --config vite/config.dev.mjs",
+    "backend": "node server.js",
     "build-nolog": "vite build --config vite/config.prod.mjs"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
     "vite": "^6.3.1"
   },
   "dependencies": {
+    "express": "^4.21.2",
     "phaser": "4.0.0"
   }
 }
