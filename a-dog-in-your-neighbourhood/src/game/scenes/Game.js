@@ -34,6 +34,8 @@ export class Game extends Scene
         this.load.image('meat', 'meat.png');
 
         this.load.audio('dog_theme', 'music/dog_theme.mp3');
+
+        this.load.audio('chomp_theme', 'music/chomp.mp3');
     }
 
     create ()
@@ -328,6 +330,12 @@ export class Game extends Scene
         );
 
         if (distance < 20) {
+            // set background music
+            this.sound.add('chomp_theme', {
+                volume: 1,
+            }).play()
+
+            this.bgMusic.play();
             
             this.spawnMeat();
         }
