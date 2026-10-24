@@ -33,6 +33,8 @@ export class Game extends Scene
 
         this.load.image('meat', 'meat.png');
 
+        
+
         this.load.audio('dog_theme', 'music/dog_theme.mp3');
 
         this.load.audio('chomp_theme', 'music/chomp.mp3');
@@ -85,6 +87,15 @@ export class Game extends Scene
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
+
+        const timer = this.add.text(300, -200, 'TIMER', {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#ffffff',
+        backgroundColor: '#000000'
+        });
+
+        
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -202,6 +213,10 @@ export class Game extends Scene
             }
         }
 
+        //add text here so it shows on top of roads
+        gameContainer.add(timer);
+        
+        
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(1.5);
         gameContainer.add(this.puppy);
@@ -249,6 +264,8 @@ export class Game extends Scene
             down: 'S',
             right: 'D'
         });
+
+        
 
     }
 
