@@ -9,7 +9,8 @@ export class Game extends Scene
     lastAnim = 'walk-up';
     lastHorizontalDir = 'right'; 
     lastMovedTime = 0;
-    nextSoundTime = 0;
+    nextYipTime = 0;
+    nextSnoreTime = 0;
 
     score = 0;
   
@@ -45,6 +46,7 @@ export class Game extends Scene
         this.load.audio('dog_theme', 'audio/dog_theme.mp3');
         this.load.audio('chomp_theme', 'audio/chomp.mp3');
         this.load.audio('yip', 'audio/yip.mp3');
+        this.load.audio('snore', 'audio/snore.mp3');
     }
 
     create ()
@@ -64,6 +66,11 @@ export class Game extends Scene
 
         this.yipSFX = this.sound.add('yip', {
             volume: 1,
+            loop: false
+        });
+
+        this.snoreSFX = this.sound.add('snore', {
+            volume: 3,
             loop: false
         });
 
@@ -105,9 +112,6 @@ export class Game extends Scene
             fontSize: '80px',
             color: '#ffffff',
         });
-
-        
-        
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -231,7 +235,7 @@ export class Game extends Scene
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(2);
         this.puppy.setOrigin(0.5, 0.8); 
-        
+
         gameContainer.add(this.puppy);
 
         // puppy walking logic
@@ -296,10 +300,12 @@ export class Game extends Scene
             }
         }
 
-        if (time >= this.nextSoundTime) {
+        const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
+
+        if (time >= this.nextYipTime && !isCurrentlyLayingDown) {
             if (Math.random() < 0.001) {
                 this.yipSFX.play();
-                this.nextSoundTime = time + 2000; 
+                this.nextYipTime = time + 2000; 
             }
         }
 
@@ -328,6 +334,7 @@ export class Game extends Scene
         if (moveX !== 0 || moveY !== 0) 
         {
             this.lastMovedTime = time;
+            this.nextSnoreTime = 0;
 
             // normalise speed if moving diagonally
             let speed = this.moveSpeed;
@@ -382,6 +389,18 @@ export class Game extends Scene
                 {
                     this.puppy.setFrame(3);
                 }
+
+                // snore
+                if (this.nextSnoreTime === 0) {
+                    this.nextSnoreTime = time + 5000;
+                }
+
+                if (time >= this.nextSnoreTime) {
+                    if (this.snoreSFX) {
+                        this.snoreSFX.play();
+                    }
+                    this.nextSnoreTime = time + 5000;
+                }
             } else {
                 // handle idle state based on the last direction walked
                 this.puppy.stop();
@@ -392,6 +411,8 @@ export class Game extends Scene
                         this.puppy.setFrame(currentFrames[0].frame.name);
                     }
                 }
+
+                this.nextSnoreTime = 0;
             }
         }
 
