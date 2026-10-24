@@ -1,3 +1,5 @@
+# download oproad_gb.gpkg from https://osdatahub.os.uk/data/downloads/open/OpenRoads
+
 import geopandas as gpd
 import requests
 import json
