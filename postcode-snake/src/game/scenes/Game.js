@@ -12,7 +12,7 @@ export class Game extends Scene
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds.png');
-        this.load.image('background', 'bg.png');
+        this.load.image('background', 'temp_grid.jpeg');
         this.load.image('logo', 'logo.png');
     }
 
@@ -30,16 +30,27 @@ export class Game extends Scene
         bg.setDepth(0);
 
         // actual game container positioning
-        const gameW = 2000;
-        const gameH = 1000;
+        const gameW = 1024;
+        const gameH = 768;
 
-        const gameScale = Math.min(screenW / gameW, screenH / gameH);
+        const gameScale = Math.min(screenW / gameW, screenH / gameH)/1.4;
 
-        const gameContainer = this.add.container(cx, cy+20);
+        const containerX = cx;
+        const containerY = cy + 20;
+
+        // container background
+        const gameContainer = this.add.container(containerX, containerY);
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
 
         const containerBg = this.add.image(0, 0, 'background');
+        gameContainer.add(containerBg);
+
+        const cropX = (containerBg.width - gameW) / 2;
+        const cropY = (containerBg.height - gameH) / 2;
+
+        containerBg.setCrop(cropX, cropY, gameW, gameH);
+        
         gameContainer.add(containerBg);
 
         // container contents
