@@ -22,6 +22,10 @@ export class Game extends Scene
 
     bgMusic;
 
+    dsOverlay;
+    dpadButtons = {};
+    dpadPositions = {};
+
     constructor ()
     {
         super('Game');
@@ -80,10 +84,10 @@ export class Game extends Scene
         const cx = this.cameras.main.centerX;
         const cy = this.cameras.main.centerY;
 
-        const bg = this.add.image(cx-35, cy+95, 'overlay');
-        const bgScale = Math.max(screenW / bg.width, screenH / bg.height);
-        bg.setScale(bgScale*1.27);
-        bg.setDepth(0);
+        this.dsOverlay = this.add.image(cx-35, cy+95, 'overlay');
+        const dsOverlayScale = Math.max(screenW / this.dsOverlay.width, screenH / this.dsOverlay.height);
+        this.dsOverlay.setScale(dsOverlayScale*1.27);
+        this.dsOverlay.setDepth(0);
 
         // actual game container positioning
         const gameW = 1024;
@@ -282,6 +286,77 @@ export class Game extends Scene
             down: 'S',
             right: 'D'
         });
+
+        this.createDPadOverlay();
+    }
+
+    createDPadOverlay ()
+    {
+        const baseX = this.cameras.main.width * 0.11;
+        const baseY = this.cameras.main.height * 0.45;
+
+        const buttonSize = 45;
+        const buttonSpacing = 60;
+        const defaultColour = 0x2f3135;
+
+        const directions = ['up', 'left', 'down', 'right'];
+
+        directions.forEach((direction) => {
+            const offset = {
+                up: { x: 0, y: -buttonSpacing },
+                left: { x: -buttonSpacing, y: 0 },
+                down: { x: 0, y: buttonSpacing },
+                right: { x: buttonSpacing, y: 0 }
+            }[direction];
+
+            const button = this.add.rectangle(
+                baseX + offset.x,
+                baseY + offset.y,
+                buttonSize,
+                buttonSize,
+                defaultColour,
+                0.9
+            );
+
+            button.setStrokeStyle(3, 0x0d0f12, 1);
+            button.setDepth(10);
+            button.setScrollFactor(0);
+
+            this.dpadPositions[direction] = {
+                x: baseX + offset.x,
+                y: baseY + offset.y
+            };
+
+            this.dpadButtons[direction] = button;
+        });
+
+        this.updateDPadVisualState();
+    }
+
+    updateDPadVisualState ()
+    {
+        if (!this.wasdKeys || !this.cursors) {
+            return;
+        }
+
+        const state = {
+            up: this.cursors.up.isDown || this.wasdKeys.up.isDown,
+            left: this.cursors.left.isDown || this.wasdKeys.left.isDown,
+            down: this.cursors.down.isDown || this.wasdKeys.down.isDown,
+            right: this.cursors.right.isDown || this.wasdKeys.right.isDown,
+        };
+
+        for (const direction of Object.keys(this.dpadButtons)) {
+            const button = this.dpadButtons[direction];
+            const active = state[direction];
+
+            button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
+            button.setStrokeStyle(3, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setPosition(
+                this.dpadPositions[direction].x,
+                this.dpadPositions[direction].y + (active ? 4 : 0)
+            );
+        }
     }
 
     update (time, delta)
@@ -309,6 +384,8 @@ export class Game extends Scene
                 this.nextYipTime = time + 2000; 
             }
         }
+
+        this.updateDPadVisualState();
 
         if (!this.cursors || !this.puppy) return;
 
