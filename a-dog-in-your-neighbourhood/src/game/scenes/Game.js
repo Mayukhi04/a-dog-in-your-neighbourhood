@@ -1,11 +1,12 @@
-import { Scene, Actions, Input } from 'phaser';
+import { Scene, Actions, Input} from 'phaser';
 
 export class Game extends Scene
 {
     cursors;
     puppy;
     moveSpeed = 3;
-    lastAnim = 'walk-up';
+    lastAnim = 'walk-up'; 
+    score = 0;
 
     roadSegments = [];
 
@@ -228,8 +229,9 @@ export class Game extends Scene
         });
 
         this.meat = this.add.sprite(spawnX, spawnY, 'meat');
-        this.meat.setScale(-0.08);
+        this.meat.setScale(0.08);
         gameContainer.add(this.meat);
+        this.spawnMeat();
 
         // set up keyboard arrow keys
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -319,6 +321,16 @@ export class Game extends Scene
                 }
             }
         }
+
+        //Control spawning of meat when dog "Collects"
+        const distance = Math.hypot(this.puppy.x-this.meat.x,
+            this.puppy.y - this.meat.y
+        );
+
+        if (distance < 20) {
+            this.spawnMeat();
+        }
+
     }
 
     // projection helper to map player point onto vector line segment
@@ -355,5 +367,19 @@ export class Game extends Scene
             y: yy,
             distance: Math.sqrt(dx * dx + dy * dy)
         };
+    }
+
+    spawnMeat() {
+    if (this.roadSegments.length === 0 || !this.meat) return;
+
+    const segment = this.roadSegments[Math.floor(Math.random() * this.roadSegments.length)]
+    const t = Math.random();
+
+    const x = segment.x1 + t * (segment.x2 - segment.x1);
+    const y = segment.y1 + t * (segment.y2 - segment.y1);
+
+    
+
+    this.meat.setPosition(x, y);
     }
 }
