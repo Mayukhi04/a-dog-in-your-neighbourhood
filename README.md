@@ -1,3 +1,3 @@
-# Postcode Snake
+# A Dog in your Neighbourhood!
 
-![snake](assets/snake.jpg)
+![puppy](assets/puppy.jpg)
