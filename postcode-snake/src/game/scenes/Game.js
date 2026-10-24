@@ -147,12 +147,31 @@ export class Game extends Scene
             graphics.strokePath();
         }
 
-        // spawn puppy safely on the first road node
+        // calculate center of the road network and spawn the puppy there
         let spawnX = 0;
         let spawnY = 0;
+
         if (this.roadSegments.length > 0) {
-            spawnX = this.roadSegments[0].x1;
-            spawnY = this.roadSegments[0].y1;
+            // calculate geometric midpoint of all road coordinates
+            let sumX = 0;
+            let sumY = 0;
+            this.roadSegments.forEach(seg => {
+                sumX += (seg.x1 + seg.x2) / 2;
+                sumY += (seg.y1 + seg.y2) / 2;
+            });
+            const mazeCenterX = sumX / this.roadSegments.length;
+            const mazeCenterY = sumY / this.roadSegments.length;
+
+            // find the road point that sits closest to absolute center
+            let minCenterDistance = Infinity;
+            for (const seg of this.roadSegments) {
+                const pt = this.getClosestPointOnSegment(mazeCenterX, mazeCenterY, seg.x1, seg.y1, seg.x2, seg.y2);
+                if (pt.distance < minCenterDistance) {
+                    minCenterDistance = pt.distance;
+                    spawnX = pt.x;
+                    spawnY = pt.y;
+                }
+            }
         }
 
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 24);
