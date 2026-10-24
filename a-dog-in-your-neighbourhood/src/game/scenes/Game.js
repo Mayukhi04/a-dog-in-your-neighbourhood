@@ -231,7 +231,7 @@ export class Game extends Scene
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(2);
         this.puppy.setOrigin(0.5, 0.8); 
-        
+
         gameContainer.add(this.puppy);
 
         // puppy walking logic
@@ -296,7 +296,9 @@ export class Game extends Scene
             }
         }
 
-        if (time >= this.nextSoundTime) {
+        const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
+
+        if (time >= this.nextSoundTime && !isCurrentlyLayingDown) {
             if (Math.random() < 0.001) {
                 this.yipSFX.play();
                 this.nextSoundTime = time + 2000; 
