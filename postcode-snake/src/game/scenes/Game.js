@@ -1,3 +1,4 @@
+
 import { Scene } from 'phaser';
 
 export class Game extends Scene
@@ -12,8 +13,8 @@ export class Game extends Scene
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds.png');
-        this.load.image('background', 'temp_grid.jpeg');
-        this.load.image('logo', 'logo.png');
+
+        this.load.json('roadMaze', '../road_maze.json');
     }
 
     create ()
@@ -43,28 +44,59 @@ export class Game extends Scene
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
 
-        const containerBg = this.add.image(0, 0, 'background');
-        gameContainer.add(containerBg);
+        const rect = this.add.rectangle(0, 0, gameW-120, gameH-100, 0x000000);
+        gameContainer.add(rect);
 
-        const cropX = (containerBg.width - gameW) / 2;
-        const cropY = (containerBg.height - gameH) / 2;
+        // Get the exported road data
+        const mapData = this.cache.json.get('roadMaze');
 
-        containerBg.setCrop(cropX, cropY, gameW, gameH);
-        
-        gameContainer.add(containerBg);
+        if (!mapData || !mapData.roads) {
+            console.error('Road maze data could not be loaded.');
+            return;
+        }
 
-        // container contents
-        const logo = this.add.image(0, 0, 'logo');
-        
-        const text = this.add.text(0, 110, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5);
+        // Scale the roads to fit within the existing game container
+        const shrink = 0.88;
 
-        gameContainer.add([logo, text]);
-        
-        gameContainer.setDepth(100);
+        const fitScale = Math.min(
+            gameW / mapData.width,
+            gameH / mapData.height
+        );
+
+        const roadScale = fitScale * shrink;
+
+        // Centre the roads within the existing container
+        const offsetX = -mapData.width * roadScale / 2;
+        const offsetY = -mapData.height * roadScale / 2;
+
+        // Draw roads inside the game container
+        const graphics = this.add.graphics();
+
+        graphics.lineStyle(10, 0xffffff, 1);
+
+        for (const road of mapData.roads) {
+            if (road.length < 2) {
+                continue;
+            }
+
+            graphics.beginPath();
+
+            graphics.moveTo(
+                offsetX + road[0][0] * roadScale,
+                offsetY + road[0][1] * roadScale
+            );
+
+            for (let i = 1; i < road.length; i++) {
+                graphics.lineTo(
+                    offsetX + road[i][0] * roadScale,
+                    offsetY + road[i][1] * roadScale
+                );
+            }
+
+            graphics.strokePath();
+        }
+
+        // Add the roads to the existing container
+        gameContainer.add(graphics);
     }
-
 }

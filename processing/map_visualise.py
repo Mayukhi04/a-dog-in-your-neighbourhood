@@ -7,7 +7,7 @@ from matplotlib.collections import LineCollection
 
 # Load the exported road maze
 script_folder = Path(__file__).resolve().parent
-json_path = script_folder / "road_maze.json"
+json_path = script_folder / "../postcode-snake/public/road_maze.json"
 
 with open(json_path, "r") as f:
     maze = json.load(f)

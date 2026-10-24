@@ -4,13 +4,22 @@ import geopandas as gpd
 import requests
 import json
 from pathlib import Path
+from shapely.geometry import box
 
 # Configuration
 script_folder = Path(__file__).resolve().parent
 gpkg_path = script_folder / "oproad_gb.gpkg"
 
 postcode = input("Enter a UK postcode: ").strip()
-half_size = 500  # 500 m in each direction
+
+# Physical aspect ratio of the cut-out: 62 mm x 46 mm
+cutout_width_mm = 62
+cutout_height_mm = 46
+aspect_ratio = cutout_width_mm / cutout_height_mm
+
+# Geographic dimensions in metres
+map_width = 1000
+map_height = map_width / aspect_ratio
 
 # Look up postcode in British National Grid
 url = f"https://api.postcodes.io/postcodes/{requests.utils.quote(postcode)}"
@@ -18,6 +27,7 @@ response = requests.get(url, timeout=15)
 response.raise_for_status()
 
 result = response.json().get("result")
+
 if not result:
     raise ValueError("Postcode not found.")
 
@@ -27,13 +37,16 @@ northing = result["northings"]
 if easting is None or northing is None:
     raise ValueError("Postcode has no British National Grid coordinates.")
 
-# Bounding box
-min_x = easting - half_size
-max_x = easting + half_size
-min_y = northing - half_size
-max_y = northing + half_size
+# Define a rectangular bounding box centred on the postcode
+half_width = map_width / 2
+half_height = map_height / 2
 
-# Load only roads within the selected area
+min_x = easting - half_width
+max_x = easting + half_width
+min_y = northing - half_height
+max_y = northing + half_height
+
+# Load roads intersecting the rectangular area
 roads = gpd.read_file(
     gpkg_path,
     layer="road_link",
@@ -41,17 +54,30 @@ roads = gpd.read_file(
     bbox=(min_x, min_y, max_x, max_y),
 )
 
-# Convert road geometries into local game coordinates
+# Clip roads to the exact rectangular boundary
+cutout = box(min_x, min_y, max_x, max_y)
+roads["geometry"] = roads.geometry.intersection(cutout)
+
+# Remove empty geometries
+roads = roads[
+    roads.geometry.notna() & ~roads.geometry.is_empty
+]
+
+# Convert clipped roads to local game coordinates
 features = []
 
 for geom in roads.geometry:
-    if geom is None or geom.is_empty:
+    if geom.geom_type == "LineString":
+        lines = [geom]
+    elif geom.geom_type == "MultiLineString":
+        lines = list(geom.geoms)
+    elif geom.geom_type == "GeometryCollection":
+        lines = [
+            part for part in geom.geoms
+            if part.geom_type == "LineString"
+        ]
+    else:
         continue
-
-    # Handle both LineString and MultiLineString
-    lines = [geom] if geom.geom_type == "LineString" else (
-        list(geom.geoms) if geom.geom_type == "MultiLineString" else []
-    )
 
     for line in lines:
         points = [
@@ -67,13 +93,17 @@ for geom in roads.geometry:
 
 # Save game-ready JSON
 game_map = {
-    "width": max_x - min_x,
-    "height": max_y - min_y,
+    "width": map_width,
+    "height": round(map_height, 2),
     "roads": features,
 }
 
-output_path = script_folder / "road_maze.json"
+output_path = script_folder / "../postcode-snake/public/road_maze.json"
+output_path.parent.mkdir(parents=True, exist_ok=True)
+
 with open(output_path, "w") as f:
     json.dump(game_map, f, separators=(",", ":"))
 
 print(f"Exported {len(features)} road segments to {output_path}")
+print(f"Map dimensions: {map_width} m x {map_height:.2f} m")
+print(f"Aspect ratio: {cutout_width_mm}:{cutout_height_mm}")
