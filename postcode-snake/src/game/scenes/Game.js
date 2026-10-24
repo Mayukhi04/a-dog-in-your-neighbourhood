@@ -188,8 +188,15 @@ export class Game extends Scene
         // execute movement and animations
         if (moveX !== 0 || moveY !== 0) 
         {
-            this.puppy.x += moveX * this.moveSpeed;
-            this.puppy.y += moveY * this.moveSpeed;
+
+            // normalise speed if moving diagonally
+            let speed = this.moveSpeed;
+            if (moveX !== 0 && moveY !== 0) {
+                speed = this.moveSpeed * 0.7071;
+            }
+
+            this.puppy.x += moveX * speed;
+            this.puppy.y += moveY * speed;
 
             if (currentAnim && this.anims.exists(currentAnim)) {
                 this.puppy.play(currentAnim, true);
