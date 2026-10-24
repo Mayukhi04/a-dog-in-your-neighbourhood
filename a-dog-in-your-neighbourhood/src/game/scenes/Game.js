@@ -22,6 +22,16 @@ export class Game extends Scene
 
     bgMusic;
 
+    dsOverlay;
+    dpadButtons = {};
+    dpadPositions = {};
+    dpadPointerState = {
+        up: false,
+        left: false,
+        down: false,
+        right: false
+    };
+
     constructor ()
     {
         super('Game');
@@ -84,9 +94,9 @@ export class Game extends Scene
         const aspectRatio = source.height / source.width;
         const bgHeight = screenW * aspectRatio;
 
-        const bg = this.add.image(cx, screenH - (bgHeight / 2), 'overlay');
-        bg.setDisplaySize(screenW, bgHeight);
-        bg.setDepth(0);
+        const dsOverlay = this.add.image(cx, screenH - (bgHeight / 2), 'overlay');
+        dsOverlay.setDisplaySize(screenW, bgHeight);
+        dsOverlay.setDepth(0);
 
         this.cameras.main.setScroll(0, 0);
 
@@ -287,6 +297,98 @@ export class Game extends Scene
             down: 'S',
             right: 'D'
         });
+
+        this.createDPadOverlay();
+    }
+
+    createDPadOverlay ()
+    {
+        const baseX = this.cameras.main.width * 0.11;
+        const baseY = this.cameras.main.height * 0.45;
+
+        const buttonSize = 45;
+        const buttonSpacing = 60;
+        const defaultColour = 0x2f3135;
+
+        const directions = ['up', 'left', 'down', 'right'];
+
+        directions.forEach((direction) => {
+            const offset = {
+                up: { x: 0, y: -buttonSpacing },
+                left: { x: -buttonSpacing, y: 0 },
+                down: { x: 0, y: buttonSpacing },
+                right: { x: buttonSpacing, y: 0 }
+            }[direction];
+
+            const button = this.add.rectangle(
+                baseX + offset.x,
+                baseY + offset.y,
+                buttonSize,
+                buttonSize,
+                defaultColour,
+                0.9
+            );
+
+            button.setStrokeStyle(3, 0x0d0f12, 1);
+            button.setDepth(10);
+            button.setScrollFactor(0);
+            button.setInteractive({ useHandCursor: true });
+
+            const setPressedState = (pressed) => {
+                this.dpadPointerState[direction] = pressed;
+                this.updateDPadVisualState();
+            };
+
+            button.on('pointerdown', () => setPressedState(true));
+            button.on('pointerup', () => setPressedState(false));
+            button.on('pointerout', () => setPressedState(false));
+            button.on('pointerupoutside', () => setPressedState(false));
+
+            this.dpadPositions[direction] = {
+                x: baseX + offset.x,
+                y: baseY + offset.y
+            };
+
+            this.dpadButtons[direction] = button;
+        });
+
+        this.updateDPadVisualState();
+    }
+
+    getDPadState ()
+    {
+        if (!this.wasdKeys || !this.cursors) {
+            return {
+                up: false,
+                left: false,
+                down: false,
+                right: false
+            };
+        }
+
+        return {
+            up: this.cursors.up.isDown || this.wasdKeys.up.isDown || this.dpadPointerState.up,
+            left: this.cursors.left.isDown || this.wasdKeys.left.isDown || this.dpadPointerState.left,
+            down: this.cursors.down.isDown || this.wasdKeys.down.isDown || this.dpadPointerState.down,
+            right: this.cursors.right.isDown || this.wasdKeys.right.isDown || this.dpadPointerState.right,
+        };
+    }
+
+    updateDPadVisualState ()
+    {
+        const state = this.getDPadState();
+
+        for (const direction of Object.keys(this.dpadButtons)) {
+            const button = this.dpadButtons[direction];
+            const active = state[direction];
+
+            button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
+            button.setStrokeStyle(3, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setPosition(
+                this.dpadPositions[direction].x,
+                this.dpadPositions[direction].y + (active ? 4 : 0)
+            );
+        }
     }
 
     update (time, delta)
@@ -315,23 +417,27 @@ export class Game extends Scene
             }
         }
 
+        this.updateDPadVisualState();
+
         if (!this.cursors || !this.puppy) return;
 
+        const dpadState = this.getDPadState();
+
         // check inputs and assign the correct animation string
-        if (this.cursors.left.isDown || this.wasdKeys.left.isDown) {
+         if (this.cursors.left.isDown || this.wasdKeys.left.isDown || dpadState.left) {
             moveX = -1;
             currentAnim = 'walk-left';
             this.lastHorizontalDir = 'left';
-        } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown) {
+        } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown || dpadState.right) {
             moveX = 1;
             currentAnim = 'walk-right';
             this.lastHorizontalDir = 'right';
         }
 
-        if (this.cursors.up.isDown || this.wasdKeys.up.isDown) {
+        if (this.cursors.up.isDown || this.wasdKeys.up.isDown || dpadState.up) {
             moveY = -1;
             currentAnim = 'walk-up';
-        } else if (this.cursors.down.isDown || this.wasdKeys.down.isDown) {
+        } else if (this.cursors.down.isDown || this.wasdKeys.down.isDown || dpadState.down) {
             moveY = 1;
             currentAnim = 'walk-down';
         }
