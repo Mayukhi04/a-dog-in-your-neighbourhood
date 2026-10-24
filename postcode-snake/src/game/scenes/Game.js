@@ -5,6 +5,9 @@ export class Game extends Scene
     cursors;
     puppy;
     moveSpeed = 3;
+    lastAnim = 'walk-up'; 
+
+    roadSegments = [];
 
     constructor ()
     {
@@ -119,11 +122,44 @@ export class Game extends Scene
         
         gameContainer.add(graphics);
 
-        // dog walking logic
-        this.puppy = this.add.sprite(0, 0, 'dog', 24);
-        this.puppy.setScale(1.5)
+        // populate road segments list with container-scaled lines
+        for (const road of mapData.roads) {
+            if (road.length < 2) {
+                continue;
+            }
+
+            graphics.beginPath();
+            graphics.moveTo(
+                offsetX + road[0][0] * roadScale,
+                offsetY + road[0][1] * roadScale
+            );
+
+            for (let i = 1; i < road.length; i++) {
+                const x1 = offsetX + road[i-1][0] * roadScale;
+                const y1 = offsetY + road[i-1][1] * roadScale;
+                const x2 = offsetX + road[i][0] * roadScale;
+                const y2 = offsetY + road[i][1] * roadScale;
+
+                this.roadSegments.push({ x1, y1, x2, y2 });
+
+                graphics.lineTo(x2, y2);
+            }
+            graphics.strokePath();
+        }
+
+        // spawn puppy safely on the first road node
+        let spawnX = 0;
+        let spawnY = 0;
+        if (this.roadSegments.length > 0) {
+            spawnX = this.roadSegments[0].x1;
+            spawnY = this.roadSegments[0].y1;
+        }
+
+        this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 24);
+        this.puppy.setScale(1.5);
         gameContainer.add(this.puppy);
 
+        // puppy walking logic
         this.anims.create({
             key: 'walk-down',
             frames: this.anims.generateFrameNumbers('dog', { start: 40, end: 42 }),
@@ -156,9 +192,6 @@ export class Game extends Scene
         this.cursors = this.input.keyboard.createCursorKeys();
 
     }
-
-    // keep track of last played animation to set the correct idle frame
-    lastAnim = 'walk-up'; 
 
     update ()
     {
@@ -195,20 +228,40 @@ export class Game extends Scene
                 speed = this.moveSpeed * 0.7071;
             }
 
-            this.puppy.x += moveX * speed;
-            this.puppy.y += moveY * speed;
+            // calculate where the player intends to step and find the closest point on the road network
+            const targetX = this.puppy.x + moveX * speed;
+            const targetY = this.puppy.y + moveY * speed;
 
-            if (currentAnim && this.anims.exists(currentAnim)) {
-                this.puppy.play(currentAnim, true);
-                this.lastAnim = currentAnim;
+            let closestPoint = null;
+            let minDistance = Infinity;
+
+            for (const seg of this.roadSegments) {
+                const pt = this.getClosestPointOnSegment(targetX, targetY, seg.x1, seg.y1, seg.x2, seg.y2);
+                if (pt.distance < minDistance) {
+                    minDistance = pt.distance;
+                    closestPoint = pt;
+                }
             }
+
+            // allowed variance thickness
+            const roadWidthThreshold = 8; 
+
+            if (closestPoint && minDistance <= roadWidthThreshold) {
+                this.puppy.x = closestPoint.x;
+                this.puppy.y = closestPoint.y;
+
+                if (currentAnim && this.anims.exists(currentAnim)) {
+                    this.puppy.play(currentAnim, true);
+                    this.lastAnim = currentAnim;
+                }
+            }
+
         }
         else 
         {
             // handle idle state based on the last direction walked
             this.puppy.stop();
             
-            // set the dog to frame 0 of whatever animation row he was last using
             if (this.puppy.anims.currentAnim) {
                 const currentFrames = this.puppy.anims.currentAnim.frames;
                 if (currentFrames && currentFrames.length > 0) {
@@ -218,4 +271,39 @@ export class Game extends Scene
         }
     }
 
+    // projection helper to map player point onto vector line segment
+    getClosestPointOnSegment(x, y, x1, y1, x2, y2) {
+        const A = x - x1;
+        const B = y - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        let param = -1;
+        
+        if (lenSq !== 0) param = dot / lenSq;
+
+        let xx, yy;
+
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        } else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        } else {
+            xx = x1 + param * C;
+                 yy = y1 + param * D;
+        }
+
+        const dx = x - xx;
+        const dy = y - yy;
+        
+        return {
+            x: xx,
+            y: yy,
+            distance: Math.sqrt(dx * dx + dy * dy)
+        };
+    }
 }
