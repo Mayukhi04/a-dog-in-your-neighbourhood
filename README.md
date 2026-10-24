@@ -1,3 +1,3 @@
 # Postcode Snake
 
-![snake](snake.jpg)
+![snake](assets/snake.jpg)
