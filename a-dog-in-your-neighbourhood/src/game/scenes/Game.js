@@ -328,6 +328,7 @@ export class Game extends Scene
         );
 
         if (distance < 20) {
+            
             this.spawnMeat();
         }
 
