@@ -228,9 +228,10 @@ export class Game extends Scene
         //add text here so it shows on top of roads
         gameContainer.add(this.timer);
         
-        
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
-        this.puppy.setScale(1.5);
+        this.puppy.setScale(2);
+        this.puppy.setOrigin(0.5, 0.8); 
+        
         gameContainer.add(this.puppy);
 
         // puppy walking logic
@@ -276,9 +277,6 @@ export class Game extends Scene
             down: 'S',
             right: 'D'
         });
-
-        
-
     }
 
     update (time, delta)
@@ -353,7 +351,7 @@ export class Game extends Scene
             }
 
             // allowed variance thickness
-            const roadWidthThreshold = 8; 
+            const roadWidthThreshold = 16; 
 
             if (closestPoint && minDistance <= roadWidthThreshold) {
                 this.puppy.x = closestPoint.x;
