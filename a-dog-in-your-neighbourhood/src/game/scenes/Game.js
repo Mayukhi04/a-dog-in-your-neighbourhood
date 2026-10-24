@@ -25,6 +25,12 @@ export class Game extends Scene
     dsOverlay;
     dpadButtons = {};
     dpadPositions = {};
+    dpadPointerState = {
+        up: false,
+        left: false,
+        down: false,
+        right: false
+    };
 
     constructor ()
     {
@@ -320,6 +326,17 @@ export class Game extends Scene
             button.setStrokeStyle(3, 0x0d0f12, 1);
             button.setDepth(10);
             button.setScrollFactor(0);
+            button.setInteractive({ useHandCursor: true });
+
+            const setPressedState = (pressed) => {
+                this.dpadPointerState[direction] = pressed;
+                this.updateDPadVisualState();
+            };
+
+            button.on('pointerdown', () => setPressedState(true));
+            button.on('pointerup', () => setPressedState(false));
+            button.on('pointerout', () => setPressedState(false));
+            button.on('pointerupoutside', () => setPressedState(false));
 
             this.dpadPositions[direction] = {
                 x: baseX + offset.x,
@@ -332,18 +349,28 @@ export class Game extends Scene
         this.updateDPadVisualState();
     }
 
-    updateDPadVisualState ()
+    getDPadState ()
     {
         if (!this.wasdKeys || !this.cursors) {
-            return;
+            return {
+                up: false,
+                left: false,
+                down: false,
+                right: false
+            };
         }
 
-        const state = {
-            up: this.cursors.up.isDown || this.wasdKeys.up.isDown,
-            left: this.cursors.left.isDown || this.wasdKeys.left.isDown,
-            down: this.cursors.down.isDown || this.wasdKeys.down.isDown,
-            right: this.cursors.right.isDown || this.wasdKeys.right.isDown,
+        return {
+            up: this.cursors.up.isDown || this.wasdKeys.up.isDown || this.dpadPointerState.up,
+            left: this.cursors.left.isDown || this.wasdKeys.left.isDown || this.dpadPointerState.left,
+            down: this.cursors.down.isDown || this.wasdKeys.down.isDown || this.dpadPointerState.down,
+            right: this.cursors.right.isDown || this.wasdKeys.right.isDown || this.dpadPointerState.right,
         };
+    }
+
+    updateDPadVisualState ()
+    {
+        const state = this.getDPadState();
 
         for (const direction of Object.keys(this.dpadButtons)) {
             const button = this.dpadButtons[direction];
@@ -388,21 +415,23 @@ export class Game extends Scene
 
         if (!this.cursors || !this.puppy) return;
 
+        const dpadState = this.getDPadState();
+
         // check inputs and assign the correct animation string
-        if (this.cursors.left.isDown || this.wasdKeys.left.isDown) {
+         if (this.cursors.left.isDown || this.wasdKeys.left.isDown || dpadState.left) {
             moveX = -1;
             currentAnim = 'walk-left';
             this.lastHorizontalDir = 'left';
-        } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown) {
+        } else if (this.cursors.right.isDown || this.wasdKeys.right.isDown || dpadState.right) {
             moveX = 1;
             currentAnim = 'walk-right';
             this.lastHorizontalDir = 'right';
         }
 
-        if (this.cursors.up.isDown || this.wasdKeys.up.isDown) {
+        if (this.cursors.up.isDown || this.wasdKeys.up.isDown || dpadState.up) {
             moveY = -1;
             currentAnim = 'walk-up';
-        } else if (this.cursors.down.isDown || this.wasdKeys.down.isDown) {
+        } else if (this.cursors.down.isDown || this.wasdKeys.down.isDown || dpadState.down) {
             moveY = 1;
             currentAnim = 'walk-down';
         }
