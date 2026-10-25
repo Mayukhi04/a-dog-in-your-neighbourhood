@@ -33,6 +33,14 @@ app.post('/api/generate-map', (req, res) => {
 
   const scriptPath = path.resolve(__dirname, '../processing/map_test.py');
   const outputPath = path.resolve(__dirname, 'public/road_maze.json');
+  const roadDataPath = path.resolve(__dirname, '../processing/oproad_gb.gpkg');
+
+  if (!fs.existsSync(roadDataPath)) {
+    return res.status(500).json({
+      error: 'Open Roads data is missing.',
+      details: 'Download the Open Roads GeoPackage and place it at processing/oproad_gb.gpkg.'
+    });
+  }
 
   const pythonProcess = spawn('python3', [scriptPath, postcode, '--output', outputPath], {
     stdio: ['ignore', 'pipe', 'pipe']
@@ -49,7 +57,20 @@ app.post('/api/generate-map', (req, res) => {
     stderr += chunk.toString();
   });
 
+  pythonProcess.on('error', (error) => {
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Could not start Python for map generation.',
+        details: error.message
+      });
+    }
+  });
+
   pythonProcess.on('close', (code) => {
+    if (res.headersSent) {
+      return;
+    }
+
     if (code !== 0) {
       return res.status(500).json({
         error: 'Python map generation failed.',
