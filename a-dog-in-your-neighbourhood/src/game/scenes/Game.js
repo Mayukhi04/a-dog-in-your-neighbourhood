@@ -19,15 +19,8 @@ export class Game extends Scene
     isTransitioning = false;
 
     score = 0;
-<<<<<<< HEAD
-<<<<<<< HEAD
-
     meatHasSpawned = false;
-=======
->>>>>>> origin
-=======
     meatHasSpawned = false;
->>>>>>> 0207ea554931223e8151797a73e6167fb07d6c32
     meatCollectedCount = 0;
     cat;
     catSpeed = 145;
