@@ -26,6 +26,7 @@ export class Game extends Scene
     catRunDirection = 'right';
     catCarrying = false;
     catHasMeat = false;
+    catTarget = null;
     catStationaryTime = 0;
   
     timerVal = 30;
@@ -82,6 +83,7 @@ export class Game extends Scene
         this.catRunDirection = 'right';
         this.catCarrying = false;
         this.catHasMeat = false;
+        this.catTarget = null;
         this.catStationaryTime = 0;
         this.timerVal = 30;
         this.timerPassed = 0;
@@ -660,8 +662,8 @@ export class Game extends Scene
                     this.cat.play(animKey, true);
                 }
 
-                this.meat.setPosition(this.cat.x, this.cat.y);
-                this.meat.setDepth(this.cat.depth + 1);
+                this.catTarget.setPosition(this.cat.x, this.cat.y);
+                this.catTarget.setDepth(this.cat.depth + 1);
 
                 const catDogDistance = Math.hypot(this.puppy.x - this.cat.x, this.puppy.y - this.cat.y);
                 if (catDogDistance < 32) {
@@ -670,9 +672,9 @@ export class Game extends Scene
                     this.cat.setVisible(false);
                     this.catCarrying = false;
                     this.catHasMeat = false;
+                    this.catTarget.setVisible(false);
+                    this.catTarget = null;
                     this.catStationaryTime = 0;
-                    this.meat.setVisible(false);
-                    this.meat.setPosition(this.cat.x, this.cat.y);
                     this.meatCollectedCount += 1;
                     this.timerVal += 5;
                     this.timerFlashUntil = time + 500;
@@ -683,14 +685,14 @@ export class Game extends Scene
             } else {
                 this.catStationaryTime = 0;
                 this.purrSFX.stop();
-                const dx = this.meat.x - this.cat.x;
-                const dy = this.meat.y - this.cat.y;
+                const dx = this.catTarget.x - this.cat.x;
+                const dy = this.catTarget.y - this.cat.y;
                 const distance = Math.hypot(dx, dy);
                 const step = Math.min(this.catSpeed * (delta / 1000), distance);
 
                 if (distance > 0) {
                     this.cat.x += (dx / distance) * step;
-                    this.cat.y = this.meat.y;
+                    this.cat.y += (dy / distance) * step;
                 }
 
                 const animKey = this.getCatAnimKeyForVector(
@@ -707,9 +709,8 @@ export class Game extends Scene
                     this.catHasMeat = true;
                     this.catStationaryTime = 0;
                     this.cat.setVisible(true);
-                    this.meat.setVisible(true);
-                    this.meat.setPosition(this.cat.x, this.cat.y);
-                    this.meat.setDepth(this.cat.depth + 1);
+                    this.catTarget.setPosition(this.cat.x, this.cat.y);
+                    this.catTarget.setDepth(this.cat.depth + 1);
                 }
             }
         }
@@ -1225,9 +1226,13 @@ export class Game extends Scene
             return;
         }
 
+        this.catTarget = this.rottenMeat.visible && Math.random() < 0.5
+            ? this.rottenMeat
+            : this.meat;
+
         const leftBound = -460;
         const rightBound = 460;
-        const nearestSide = Math.abs(this.meat.x - leftBound) <= Math.abs(this.meat.x - rightBound) ? 'left' : 'right';
+        const nearestSide = Math.abs(this.catTarget.x - leftBound) <= Math.abs(this.catTarget.x - rightBound) ? 'left' : 'right';
         const runFrom = nearestSide === 'left' ? 'right' : 'left';
         const spawnOffset = 200;
 
@@ -1236,8 +1241,8 @@ export class Game extends Scene
         this.catHasMeat = false;
         this.catStationaryTime = 0;
         this.purrSFX.stop();
-        const startX = runFrom === 'right' ? this.meat.x + spawnOffset : this.meat.x - spawnOffset;
-        const startY = this.meat.y;
+        const startX = runFrom === 'right' ? this.catTarget.x + spawnOffset : this.catTarget.x - spawnOffset;
+        const startY = this.catTarget.y;
 
         this.cat.setPosition(startX, startY);
         this.cat.setVisible(true);
@@ -1253,6 +1258,7 @@ export class Game extends Scene
         this.meatHasSpawned = true;
         this.catCarrying = false;
         this.catHasMeat = false;
+        this.catTarget = null;
         this.catStationaryTime = 0;
         this.purrSFX?.stop();
 
