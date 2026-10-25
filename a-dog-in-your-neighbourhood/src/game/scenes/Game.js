@@ -12,9 +12,10 @@ export class Game extends Scene
     lastMovedTime = 0;
     nextYipTime = 0;
     nextSnoreTime = 0;
+    meatHasSpawned = false;
+    isTransitioning = false;
 
     score = 0;
-    meatHasSpawned = false;
   
     timerVal = 30;
     timerPassed = 0;
@@ -462,6 +463,15 @@ export class Game extends Scene
         let moveX = 0;
         let moveY = 0;
         let currentAnim = null;
+
+        if (this.timerVal <= 0 && !this.isTransitioning) {
+            this.isTransitioning = true;
+
+            this.input.keyboard.clearCaptures();
+            this.input.keyboard.removeAllListeners();
+
+            this.scene.start('GameOverScene');
+        }
 
         if (this.timerVal > 0) {
             this.gameOverBirdLaunched = false;
