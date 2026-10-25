@@ -6,6 +6,9 @@ const config = {
     type: AUTO,
     parent: 'game-container',
     backgroundColor: '#ffffff',
+    dom: {
+        createContainer: true
+    },
     scale: {
         mode: Scale.RESIZE,
         autoCenter: Scale.CENTER_BOTH
