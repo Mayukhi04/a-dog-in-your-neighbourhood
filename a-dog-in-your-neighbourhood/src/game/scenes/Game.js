@@ -43,7 +43,7 @@ export class Game extends Scene
     postmanYipNextTime = 0;
     postmanRedFlash = null;
     postmanSFX = null;
-    postmanRoadOffsetY = -8;
+    postmanRoadOffsetY = -22;
     postmanDirectionX = 1;
     postmanDirectionY = 0;
     cat;
@@ -129,7 +129,7 @@ export class Game extends Scene
         this.postmanYipNextTime = 0;
         this.postmanRedFlash = null;
         this.postmanSFX = null;
-        this.postmanRoadOffsetY = -8;
+        this.postmanRoadOffsetY = -22;
         this.postmanDirectionX = 1;
         this.postmanDirectionY = 0;
         this.cat = null;
@@ -530,7 +530,7 @@ export class Game extends Scene
         
 
         this.postman = this.add.sprite(10,50,'postman');
-        this.postman.setScale(0.07);
+        this.postman.setScale(0.04);
         this.postman.setVisible(false);
         gameContainer.add(this.postman);
 
@@ -1082,7 +1082,7 @@ export class Game extends Scene
                 this.postman.y - this.puppy.y
             );
 
-            if (directDistance <= 18) {
+            if (directDistance <= 42) {
                 this.postmanFollowTriggered = true;
                 this.postmanTripTriggered = true;
                 this.postmanFollowChaseUntil = this.time.now + 3000;
@@ -1388,7 +1388,7 @@ export class Game extends Scene
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score % 3 == 0) {
+        if (this.score >= 5 && Math.random() < 1 / 3) {
             this.startPostmanCrossing();
         }
     }
@@ -1406,7 +1406,7 @@ export class Game extends Scene
 
         if (!this.postman) {
             this.postman = this.add.sprite(10, 50, 'postman');
-            this.postman.setScale(0.07);
+            this.postman.setScale(0.1);
             this.postman.setVisible(false);
             this.gameContainer.add(this.postman);
         }
