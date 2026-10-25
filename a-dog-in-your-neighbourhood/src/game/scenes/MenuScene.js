@@ -43,18 +43,26 @@ export class MenuScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
-        const form = this.add.dom(cx, cy + 40).createFromHTML(`
-            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; font-family: 'PixelFont', sans-serif;">
-                <input type="text" placeholder="Please type postcode here" value="" style="width: 300px; height: 46px; border: 3px solid #ffffff; border-radius: 10px; background: rgba(17, 24, 39, 0.8); color: #ffffff; font-size: 18px; text-transform: uppercase; padding: 0 12px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif;" />
-                <button type="button" style="width: 170px; height: 52px; border: 3px solid #ffffff; border-radius: 12px; background: rgba(45, 156, 219, 0.9); color: #ffffff; font-size: 22px; font-weight: bold; cursor: pointer; font-family: 'PixelFont', sans-serif;">START</button>
-                <div id="postcode-error" style="min-height: 18px; color: #ffd7d7; font-size: 14px; text-align: center; max-width: 300px;"> </div>
+        const form = this.add.dom(cx, cy + 180).createFromHTML(`
+            <div style="display:flex; flex-direction:column; align-items:center; gap:14px; font-family: 'PixelFont', sans-serif;">
+                <style>
+                    input::placeholder {
+                        color: rgba(255,255,255,0.95);
+                        opacity: 1;
+                    }
+                </style>
+                <input type="text" placeholder="Please type your postcode here" value="" style="width: 310px; height: 48px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; text-transform: uppercase; padding: 0 12px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px);" />
+                <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
+                    <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
+                </div>
+                <div id="postcode-error" style="min-height: 18px; color: #ffe3e3; font-size: 14px; text-align: center; max-width: 300px; font-weight: 700;"> </div>
             </div>
         `);
         form.setOrigin(0.5);
         form.setDepth(10);
 
         const postcodeInput = form.node.querySelector('input');
-        const submitButton = form.node.querySelector('button');
+        const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
 
         const handleGenerate = async () => {
@@ -80,17 +88,26 @@ export class MenuScene extends Scene {
 
                 if (!response.ok) {
                     const errorBody = await response.json().catch(() => ({}));
-                    throw new Error(errorBody.error || 'Unable to generate map from postcode.');
+                    const message = errorBody.error || 'Invalid postcode';
+                    throw new Error(message.includes('postcode') || message.includes('invalid') || message.includes('not found') ? 'Invalid postcode' : 'Invalid postcode');
                 }
 
                 this.scene.start('Game');
             } catch (error) {
                 console.error(error);
-                errorText.textContent = error.message || 'There was a problem generating the map.';
+                errorText.textContent = 'Invalid postcode';
             }
         };
 
         submitButton.addEventListener('click', handleGenerate);
+        submitButton.addEventListener('mouseenter', () => {
+            submitButton.style.color = '#ffffff';
+            submitButton.style.opacity = '1';
+        });
+        submitButton.addEventListener('mouseleave', () => {
+            submitButton.style.color = 'rgba(255,255,255,0.8)';
+            submitButton.style.opacity = '0.9';
+        });
         postcodeInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 handleGenerate();

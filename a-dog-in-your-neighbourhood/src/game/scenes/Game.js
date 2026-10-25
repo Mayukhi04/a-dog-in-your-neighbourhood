@@ -23,6 +23,8 @@ export class Game extends Scene
     gameOverBirdLaunched = false;
   
     roadSegments = [];
+    connectedRoadSegments = [];
+    connectedRoadSet = new Set();
     reachableRoadSegments = [];
     roadWidthThreshold = 16;
 
@@ -275,6 +277,7 @@ export class Game extends Scene
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(2);
         this.puppy.setOrigin(0.5, 0.8); 
+        this.buildConnectedRoadComponent(spawnX, spawnY);
 
         gameContainer.add(this.puppy);
         this.reachableRoadSegments = this.getReachableRoadSegments(spawnX, spawnY);
@@ -579,8 +582,9 @@ export class Game extends Scene
 
             let closestPoint = null;
             let minDistance = Infinity;
+            const walkableSegments = this.getWalkableRoadSegments();
 
-            for (const seg of this.reachableRoadSegments) {
+            for (const seg of this.roadSegments) {
                 const pt = this.getClosestPointOnSegment(targetX, targetY, seg.x1, seg.y1, seg.x2, seg.y2);
                 if (pt.distance < minDistance) {
                     minDistance = pt.distance;
@@ -701,6 +705,88 @@ export class Game extends Scene
         };
     }
 
+    getNearestRoadDistance(x, y, segments = this.getWalkableRoadSegments()) {
+        let nearestDistance = Infinity;
+
+        for (const seg of segments) {
+            const closest = this.getClosestPointOnSegment(x, y, seg.x1, seg.y1, seg.x2, seg.y2);
+            nearestDistance = Math.min(nearestDistance, closest.distance);
+        }
+
+        return nearestDistance;
+    }
+
+    getWalkableRoadSegments() {
+        if (this.connectedRoadSegments.length > 0) {
+            return this.connectedRoadSegments;
+        }
+
+        return this.roadSegments;
+    }
+
+    buildConnectedRoadComponent(startX, startY) {
+        if (this.roadSegments.length === 0) {
+            this.connectedRoadSegments = [];
+            this.connectedRoadSet = new Set();
+            return;
+        }
+
+        const segmentGraph = new Map();
+        const pointKey = (x, y) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
+
+        for (let i = 0; i < this.roadSegments.length; i++) {
+            segmentGraph.set(i, new Set());
+        }
+
+        for (let i = 0; i < this.roadSegments.length; i++) {
+            const segA = this.roadSegments[i];
+            const aKey = pointKey(segA.x1, segA.y1);
+            const bKey = pointKey(segA.x2, segA.y2);
+
+            for (let j = i + 1; j < this.roadSegments.length; j++) {
+                const segB = this.roadSegments[j];
+                const a2Key = pointKey(segB.x1, segB.y1);
+                const b2Key = pointKey(segB.x2, segB.y2);
+
+                if (aKey === a2Key || aKey === b2Key || bKey === a2Key || bKey === b2Key) {
+                    segmentGraph.get(i).add(j);
+                    segmentGraph.get(j).add(i);
+                }
+            }
+        }
+
+        let startIndex = 0;
+        let minDistance = Infinity;
+
+        for (let i = 0; i < this.roadSegments.length; i++) {
+            const seg = this.roadSegments[i];
+            const closest = this.getClosestPointOnSegment(startX, startY, seg.x1, seg.y1, seg.x2, seg.y2);
+            if (closest.distance < minDistance) {
+                minDistance = closest.distance;
+                startIndex = i;
+            }
+        }
+
+        const queue = [startIndex];
+        const visited = new Set([startIndex]);
+        const connected = [];
+
+        while (queue.length > 0) {
+            const index = queue.shift();
+            connected.push(this.roadSegments[index]);
+
+            for (const nextIndex of segmentGraph.get(index) || []) {
+                if (!visited.has(nextIndex)) {
+                    visited.add(nextIndex);
+                    queue.push(nextIndex);
+                }
+            }
+        }
+
+        this.connectedRoadSegments = connected;
+        this.connectedRoadSet = new Set(connected);
+    }
+
     getReachableRoadSegments(startX, startY) {
         if (this.roadSegments.length === 0) {
             return [];
@@ -814,22 +900,46 @@ export class Game extends Scene
     spawnMeat() {
         if (this.roadSegments.length === 0 || !this.meat || !this.rottenMeat) return;
 
+        const walkableSegments = this.getWalkableRoadSegments();
         const rottenMeatSpawns = this.meatHasSpawned && Math.random() < 0.2;
         this.meatHasSpawned = true;
 
-        const placeOnRoad = (item) => {
-            const segment = this.roadSegments[Math.floor(Math.random() * this.roadSegments.length)];
-            const t = Math.random();
-            item.setPosition(
-                segment.x1 + t * (segment.x2 - segment.x1),
-                segment.y1 + t * (segment.y2 - segment.y1)
-            );
+        const roadSamples = [];
+        for (const segment of walkableSegments) {
+            for (let i = 1; i <= 8; i++) {
+                const t = i / 9;
+                const x = segment.x1 + t * (segment.x2 - segment.x1);
+                const y = segment.y1 + t * (segment.y2 - segment.y1);
+
+                const nearestRoadDistance = this.getNearestRoadDistance(x, y, walkableSegments);
+                const distanceFromDog = this.puppy ? Math.hypot(this.puppy.x - x, this.puppy.y - y) : Infinity;
+
+                if (nearestRoadDistance <= 18 && distanceFromDog >= 80) {
+                    roadSamples.push({ x, y });
+                }
+            }
+        }
+
+        const pickRoadSample = () => {
+            if (roadSamples.length === 0) {
+                const fallback = walkableSegments[Math.floor(Math.random() * walkableSegments.length)];
+                const t = Math.random();
+                return {
+                    x: fallback.x1 + t * (fallback.x2 - fallback.x1),
+                    y: fallback.y1 + t * (fallback.y2 - fallback.y1)
+                };
+            }
+
+            return roadSamples[Math.floor(Math.random() * roadSamples.length)];
         };
 
-        placeOnRoad(this.meat);
+        const meatPosition = pickRoadSample();
+        this.meat.setPosition(meatPosition.x, meatPosition.y);
+
         this.rottenMeat.setVisible(rottenMeatSpawns);
         if (rottenMeatSpawns) {
-            placeOnRoad(this.rottenMeat);
+            const rottenPosition = pickRoadSample();
+            this.rottenMeat.setPosition(rottenPosition.x, rottenPosition.y);
         }
     }
 }
