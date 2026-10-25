@@ -34,7 +34,7 @@ export class GameOverScene extends Scene {
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
-        this.add.text(cx, cy - 120, 'Game Over!', {
+        this.add.text(cx, cy - 150, 'Game Over!', {
             fontFamily: 'PixelFont',
             fontSize: '36px',
             color: '#ffffff',
@@ -43,17 +43,13 @@ export class GameOverScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
-        const playAgainButton = this.add.text(cx, cy + 20, 'PLAY AGAIN', {
-            fontFamily: 'PixelFont',
-            fontSize: '22px',
-            color: '#ffffff',
-            backgroundColor: '#2d9cdb',
-            padding: { x: 24, y: 14 },
-            stroke: '#ffffff',
-            strokeThickness: 3,
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        const playAgainButton = this.add.dom(cx, cy).createFromHTML(`
+            <button type="button" style="width: 170px; height: 52px; border: 3px solid #ffffff; border-radius: 12px; background: rgba(45, 156, 219, 0.9); color: #ffffff; font-size: 22px; font-weight: bold; cursor: pointer; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
+        `);
+        playAgainButton.setOrigin(0.5);
+        playAgainButton.setDepth(10);
 
-        playAgainButton.on('pointerdown', () => {
+        playAgainButton.node.addEventListener('click', () => {
             this.scene.start('MenuScene');
         });
     }
