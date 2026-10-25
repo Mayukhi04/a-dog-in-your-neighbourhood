@@ -55,6 +55,38 @@ export class Game extends Scene
         super('Game');
     }
 
+    resetGameState() {
+        this.cursors = null;
+        this.puppy = null;
+        this.bird = null;
+        this.birdfly = null;
+        this.dogCaught = false;
+        this.birdEscapeDirection = 0;
+        this.birdEscapeTargetX = 0;
+        this.moveSpeed = 3;
+        this.lastAnim = 'walk-up';
+        this.lastHorizontalDir = 'right';
+        this.lastMovedTime = 0;
+        this.nextYipTime = 0;
+        this.nextSnoreTime = 0;
+        this.meatHasSpawned = false;
+        this.isTransitioning = false;
+        this.score = 0;
+        this.meatCollectedCount = 0;
+        this.cat = null;
+        this.catRunDirection = 'right';
+        this.timerVal = 30;
+        this.timerPassed = 0;
+        this.timerFlashUntil = 0;
+        this.timerFlashSuffix = '';
+        this.gameOverBirdLaunched = false;
+        this.roadSegments = [];
+        this.connectedRoadSegments = [];
+        this.connectedRoadSet = new Set();
+        this.reachableRoadSegments = [];
+        this.gameContainer = null;
+    }
+
     preload ()
     {
         this.load.setPath('assets');
@@ -101,6 +133,8 @@ export class Game extends Scene
 
     create ()
     {
+        this.resetGameState();
+
         // load audio and play background music
         this.bgMusic = this.sound.add('dog_theme', {
             volume: 0.5,
