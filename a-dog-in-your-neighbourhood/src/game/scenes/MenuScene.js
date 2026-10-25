@@ -72,6 +72,8 @@ export class MenuScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('menuField', 'field.jpeg');
+        this.load.image('notesButton', 'notes.png');
+        this.load.image('notePage', 'note_page.png');
         this.load.audio('click', 'audio/click.mp3');
         this.load.audio('dice_roll', 'audio/dice_roll.mp3');
         this.load.audio('slow_song', 'audio/slow_song.mp3');
@@ -470,6 +472,41 @@ export class MenuScene extends Scene {
         document.addEventListener('pointerdown', closeCityPicker);
         this.events.once('shutdown', () => {
             document.removeEventListener('pointerdown', closeCityPicker);
+        });
+
+        const notesButton = this.add.image(
+            DS_TOP_SCREEN.x + 18,
+            DS_TOP_SCREEN.y + 18,
+            'notesButton'
+        ).setOrigin(0).setDisplaySize(26, 28).setDepth(20);
+        notesButton.setInteractive({ useHandCursor: true });
+        notesButton.setName('notes-button');
+
+        const noteOverlay = this.add.dom(
+            DS_TOP_SCREEN.x + DS_TOP_SCREEN.width / 2,
+            DS_TOP_SCREEN.y + DS_TOP_SCREEN.height / 2
+        ).createFromHTML(`
+            <div style="position:relative; width:${DS_TOP_SCREEN.width}px; height:${DS_TOP_SCREEN.height}px; display:flex; align-items:center; justify-content:center; background:rgba(16,26,22,0.78);">
+                <img src="${import.meta.env.BASE_URL}assets/note_page.png" alt="Notes" style="display:block; max-width:calc(100% - 36px); max-height:calc(100% - 36px); object-fit:contain; image-rendering:pixelated;">
+            </div>
+        `).setOrigin(0.5).setDepth(30).setVisible(false);
+
+        const setNotesOpen = (isOpen) => {
+            noteOverlay.setVisible(isOpen);
+        };
+        const closeNotes = () => setNotesOpen(false);
+
+        notesButton.on('pointerdown', () => {
+            clickSfx.play();
+            setNotesOpen(true);
+        });
+        noteOverlay.node.addEventListener('click', () => {
+            clickSfx.play();
+            closeNotes();
+        });
+        this.input.keyboard?.on('keydown-ESC', closeNotes);
+        this.events.once('shutdown', () => {
+            this.input.keyboard?.off('keydown-ESC', closeNotes);
         });
     }
 }
