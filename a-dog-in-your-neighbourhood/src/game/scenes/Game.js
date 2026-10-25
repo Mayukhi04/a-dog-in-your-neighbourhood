@@ -59,7 +59,10 @@ export class Game extends Scene
     timerFlashUntil = 0;
     timerFlashSuffix = '';
     gameContainer;
+    pauseScreenFilter;
+    pauseIcon;
     gameOverBirdLaunched = false;
+    isGamePaused = false;
   
     roadSegments = [];
     connectedRoadSegments = [];
@@ -73,6 +76,7 @@ export class Game extends Scene
     dpadScale = 1;
     dpadButtons = {};
     dpadPositions = {};
+    letterButtonOverlays = {};
     dpadPointerState = {
         up: false,
         left: false,
@@ -135,15 +139,19 @@ export class Game extends Scene
         this.timerFlashUntil = 0;
         this.timerFlashSuffix = '';
         this.gameOverBirdLaunched = false;
+        this.isGamePaused = false;
         this.roadSegments = [];
         this.connectedRoadSegments = [];
         this.connectedRoadSet = new Set();
         this.reachableRoadSegments = [];
         this.gameContainer = null;
+        this.pauseScreenFilter = null;
+        this.pauseIcon = null;
         this.dsOverlay = null;
         this.dpadScale = 1;
         this.dpadButtons = {};
         this.dpadPositions = {};
+        this.letterButtonOverlays = {};
         this.dpadPointerState = {
             up: false,
             left: false,
@@ -286,6 +294,29 @@ export class Game extends Scene
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
         this.gameContainer = gameContainer;
+        this.pauseScreenFilter = this.add.rectangle(
+            containerX,
+            containerY,
+            DS_BOTTOM_SCREEN.width,
+            DS_BOTTOM_SCREEN.height,
+            0xffffff,
+            0.35
+        ).setDepth(5).setVisible(false);
+        this.pauseIcon = this.add.graphics({ x: containerX, y: containerY })
+            .setDepth(6)
+            .setVisible(false);
+        const drawPauseBar = (x) => {
+            this.pauseIcon.fillStyle(0x35633a, 0.9);
+            this.pauseIcon.fillRect(x - 4, -14, 8, 3);
+            this.pauseIcon.fillRect(x - 6, -11, 12, 22);
+            this.pauseIcon.fillRect(x - 4, 11, 8, 3);
+
+            this.pauseIcon.fillStyle(0x9acb7d, 0.9);
+            this.pauseIcon.fillRect(x - 2, -11, 4, 22);
+        };
+
+        drawPauseBar(-7);
+        drawPauseBar(7);
 
         const tilesW = gameW;
         this.gameFieldWidth = tilesW;
@@ -580,7 +611,7 @@ export class Game extends Scene
                 0.9
             );
 
-            button.setStrokeStyle(3 * overlayScale, 0x0d0f12, 1);
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
             button.setDepth(10);
             button.setScrollFactor(0);
             button.setInteractive({ useHandCursor: true });
@@ -603,7 +634,97 @@ export class Game extends Scene
             this.dpadButtons[direction] = button;
         });
 
+        const letterButtons = {
+            X: { x: 875, y: 175 },
+            Y: { x: 818, y: 233 },
+            A: { x: 932, y: 233 },
+            B: { x: 875, y: 291 }
+        };
+
+        Object.entries(letterButtons).forEach(([letter, position]) => {
+            const x = toCanvasX(position.x);
+            const y = toCanvasY(position.y);
+            const button = this.add.circle(
+                x,
+                y,
+                26 * overlayScale,
+                defaultColour,
+                0.72
+            );
+
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
+            button.setDepth(10);
+            button.setScrollFactor(0);
+            button.setInteractive({ useHandCursor: true });
+
+            let isPressed = false;
+            const setPressedState = (pressed) => {
+                isPressed = pressed;
+                button.setFillStyle(pressed ? 0x4a4e55 : defaultColour, pressed ? 0.9 : 0.72);
+                button.setPosition(x, y + (pressed ? 2 * overlayScale : 0));
+            };
+
+            button.on('pointerdown', () => setPressedState(true));
+            button.on('pointerup', () => {
+                if (!isPressed) {
+                    return;
+                }
+
+                setPressedState(false);
+                this.handleLetterButtonPress(letter);
+            });
+            button.on('pointerout', () => setPressedState(false));
+            button.on('pointerupoutside', () => setPressedState(false));
+
+            this.letterButtonOverlays[letter] = button;
+        });
+
         this.updateDPadVisualState();
+    }
+
+    handleLetterButtonPress (letter)
+    {
+        switch (letter) {
+            case 'A':
+                this.yipSFX.play();
+                break;
+            case 'B':
+                if (!this.isTransitioning) {
+                    this.isTransitioning = true;
+                    this.input.keyboard.clearCaptures();
+                    this.input.keyboard.removeAllListeners();
+                    this.scene.start('MenuScene');
+                }
+                break;
+            case 'X':
+                this.sound.mute = !this.sound.mute;
+                break;
+            case 'Y':
+                this.toggleGamePause();
+                break;
+            default:
+                console.warn(`Unknown DS button: ${letter}`);
+        }
+    }
+
+    toggleGamePause ()
+    {
+        this.isGamePaused = !this.isGamePaused;
+        this.pauseScreenFilter.setVisible(this.isGamePaused);
+        this.pauseIcon.setVisible(this.isGamePaused);
+
+        if (this.isGamePaused) {
+            this.time.paused = true;
+            this.tweens.pauseAll();
+            this.anims.pauseAll();
+            this.sound.pauseAll();
+            return;
+        }
+
+        this.time.paused = false;
+        this.tweens.resumeAll();
+        this.anims.resumeAll();
+        this.sound.resumeAll();
     }
 
     getDPadState ()
@@ -633,11 +754,11 @@ export class Game extends Scene
             const button = this.dpadButtons[direction];
             const active = state[direction];
 
-            button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
-            button.setStrokeStyle(3 * this.dpadScale, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setFillStyle(active ? 0x4a4e55 : 0x2f3135, active ? 0.9 : 0.72);
+            button.setStrokeStyle(2 * this.dpadScale, 0x090a0d, 0.9);
             button.setPosition(
                 this.dpadPositions[direction].x,
-                this.dpadPositions[direction].y + (active ? 4 * this.dpadScale : 0)
+                this.dpadPositions[direction].y + (active ? 2 * this.dpadScale : 0)
             );
         }
 
@@ -658,6 +779,8 @@ export class Game extends Scene
 
     update (time, delta)
     {
+        if (this.isGamePaused) return;
+
         if (this.timerFlashUntil && time > this.timerFlashUntil) {
             this.timerFlashUntil = 0;
             this.timerFlashSuffix = '';
