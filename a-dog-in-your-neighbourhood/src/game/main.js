@@ -1,6 +1,7 @@
 import { Game as MainGame } from './scenes/Game';
 import { MenuScene } from './scenes/MenuScene';
 import { GameOverScene } from './scenes/GameOverScene';
+import { DESIGN_HEIGHT, DESIGN_WIDTH } from './layout';
 import { AUTO, Scale, Game } from 'phaser';
 
 const config = {
@@ -11,8 +12,10 @@ const config = {
         createContainer: true
     },
     scale: {
-        mode: Scale.RESIZE,
-        autoCenter: Scale.CENTER_BOTH
+        mode: Scale.FIT,
+        autoCenter: Scale.CENTER_BOTH,
+        width: DESIGN_WIDTH,
+        height: DESIGN_HEIGHT
     },
     scene: [
         MenuScene,
