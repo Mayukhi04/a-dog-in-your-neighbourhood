@@ -238,6 +238,7 @@ export class Game extends Scene
             loop: true
         });
         this.events.once('shutdown', () => {
+            this.clearPausedState();
             this.bgMusic.stop();
             this.bgMusic.destroy();
             this.purrSFX?.stop();
@@ -708,6 +709,7 @@ export class Game extends Scene
                     this.isTransitioning = true;
                     this.input.keyboard.clearCaptures();
                     this.input.keyboard.removeAllListeners();
+                    this.clearPausedState();
                     this.scene.start('MenuScene');
                 }
                 break;
@@ -740,6 +742,21 @@ export class Game extends Scene
         this.tweens.resumeAll();
         this.anims.resumeAll();
         this.sound.resumeAll();
+    }
+
+    clearPausedState ()
+    {
+        if (!this.isGamePaused) {
+            return;
+        }
+
+        this.isGamePaused = false;
+        this.time.paused = false;
+        this.tweens.resumeAll();
+        this.anims.resumeAll();
+        this.sound.resumeAll();
+        this.pauseScreenFilter?.setVisible(false);
+        this.pauseIcon?.setVisible(false);
     }
 
     getDPadState ()
