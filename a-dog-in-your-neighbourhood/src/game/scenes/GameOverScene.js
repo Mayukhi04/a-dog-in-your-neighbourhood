@@ -34,7 +34,7 @@ export class GameOverScene extends Scene {
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
-        this.add.text(cx, cy - 150, 'Game Over!', {
+        this.add.text(cx, cy - 120, 'Game Over!', {
             fontFamily: 'PixelFont',
             fontSize: '36px',
             color: '#ffffff',
