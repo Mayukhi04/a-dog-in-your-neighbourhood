@@ -51,7 +51,10 @@ export class Game extends Scene
     timerFlashUntil = 0;
     timerFlashSuffix = '';
     gameContainer;
+    pauseScreenFilter;
+    pauseIcon;
     gameOverBirdLaunched = false;
+    isGamePaused = false;
   
     roadSegments = [];
     connectedRoadSegments = [];
@@ -120,11 +123,14 @@ export class Game extends Scene
         this.timerFlashUntil = 0;
         this.timerFlashSuffix = '';
         this.gameOverBirdLaunched = false;
+        this.isGamePaused = false;
         this.roadSegments = [];
         this.connectedRoadSegments = [];
         this.connectedRoadSet = new Set();
         this.reachableRoadSegments = [];
         this.gameContainer = null;
+        this.pauseScreenFilter = null;
+        this.pauseIcon = null;
         this.dsOverlay = null;
         this.dpadScale = 1;
         this.dpadButtons = {};
@@ -266,6 +272,29 @@ export class Game extends Scene
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
         this.gameContainer = gameContainer;
+        this.pauseScreenFilter = this.add.rectangle(
+            containerX,
+            containerY,
+            DS_BOTTOM_SCREEN.width,
+            DS_BOTTOM_SCREEN.height,
+            0xffffff,
+            0.35
+        ).setDepth(5).setVisible(false);
+        this.pauseIcon = this.add.graphics({ x: containerX, y: containerY })
+            .setDepth(6)
+            .setVisible(false);
+        const drawPauseBar = (x) => {
+            this.pauseIcon.fillStyle(0x35633a, 0.9);
+            this.pauseIcon.fillRect(x - 4, -14, 8, 3);
+            this.pauseIcon.fillRect(x - 6, -11, 12, 22);
+            this.pauseIcon.fillRect(x - 4, 11, 8, 3);
+
+            this.pauseIcon.fillStyle(0x9acb7d, 0.9);
+            this.pauseIcon.fillRect(x - 2, -11, 4, 22);
+        };
+
+        drawPauseBar(-7);
+        drawPauseBar(7);
 
         const tilesW = gameW;
         this.gameFieldWidth = tilesW;
@@ -632,20 +661,45 @@ export class Game extends Scene
     {
         switch (letter) {
             case 'A':
-                // TODO: Add the A button action.
+                this.yipSFX.play();
                 break;
             case 'B':
-                // TODO: Add the B button action.
+                if (!this.isTransitioning) {
+                    this.isTransitioning = true;
+                    this.input.keyboard.clearCaptures();
+                    this.input.keyboard.removeAllListeners();
+                    this.scene.start('MenuScene');
+                }
                 break;
             case 'X':
-                // TODO: Add the X button action.
+                this.sound.mute = !this.sound.mute;
                 break;
             case 'Y':
-                // TODO: Add the Y button action.
+                this.toggleGamePause();
                 break;
             default:
                 console.warn(`Unknown DS button: ${letter}`);
         }
+    }
+
+    toggleGamePause ()
+    {
+        this.isGamePaused = !this.isGamePaused;
+        this.pauseScreenFilter.setVisible(this.isGamePaused);
+        this.pauseIcon.setVisible(this.isGamePaused);
+
+        if (this.isGamePaused) {
+            this.time.paused = true;
+            this.tweens.pauseAll();
+            this.anims.pauseAll();
+            this.sound.pauseAll();
+            return;
+        }
+
+        this.time.paused = false;
+        this.tweens.resumeAll();
+        this.anims.resumeAll();
+        this.sound.resumeAll();
     }
 
     getDPadState ()
@@ -700,6 +754,8 @@ export class Game extends Scene
 
     update (time, delta)
     {
+        if (this.isGamePaused) return;
+
         if (this.timerFlashUntil && time > this.timerFlashUntil) {
             this.timerFlashUntil = 0;
             this.timerFlashSuffix = '';
