@@ -40,6 +40,8 @@ export class Game extends Scene
     postmanFollowRouteIndex = 0;
     postmanTripTriggered = false;
     postmanOverlapBufferUntil = 0;
+    postmanYipNextTime = 0;
+    postmanRedFlash = null;
     postmanDirectionX = 1;
     postmanDirectionY = 0;
     cat;
@@ -118,6 +120,8 @@ export class Game extends Scene
         this.postmanFollowRouteIndex = 0;
         this.postmanTripTriggered = false;
         this.postmanOverlapBufferUntil = 0;
+        this.postmanYipNextTime = 0;
+        this.postmanRedFlash = null;
         this.postmanDirectionX = 1;
         this.postmanDirectionY = 0;
         this.cat = null;
@@ -264,6 +268,11 @@ export class Game extends Scene
         const gameW = 1024;
         const gameH = 768;
 
+        this.postmanRedFlash = this.add.rectangle(0, 0, gameW, gameH, 0xff3d3d, 0);
+        this.postmanRedFlash.setOrigin(0.5);
+        this.postmanRedFlash.setDepth(60);
+        this.postmanRedFlash.setVisible(true);
+
         const gameScale = Math.min(
             DS_BOTTOM_SCREEN.width / gameW,
             DS_BOTTOM_SCREEN.height / gameH
@@ -286,6 +295,8 @@ export class Game extends Scene
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
+        this.postmanRedFlash.setPosition(0, 0);
+        gameContainer.add(this.postmanRedFlash);
 
         this.timer = this.add.text(gameW / 2 - 24, -gameH / 2 + 42, `${this.timerVal}`, {
             fontFamily: 'PixelFont',
@@ -365,6 +376,7 @@ export class Game extends Scene
         });
 
         gameContainer.add(graphics);
+        gameContainer.add(this.postmanRedFlash);
 
         // populate road segments list with container-scaled lines
         for (const road of mapData.roads) {
@@ -937,6 +949,7 @@ export class Game extends Scene
                 this.postmanTripTriggered = true;
                 this.postmanFollowChaseUntil = this.time.now + 3000;
                 this.postmanOverlapBufferUntil = 0;
+                this.postmanYipNextTime = this.time.now + 250;
                 this.postmanFollowDistance = 0;
                 this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
                 this.postmanFollowTarget = { x: this.postman.x, y: this.postman.y };
@@ -953,8 +966,18 @@ export class Game extends Scene
                 this.postman.x - this.puppy.x,
                 this.postman.y - this.puppy.y
             );
+            const chaseActive = this.time.now < this.postmanFollowChaseUntil;
 
-            if (this.time.now < this.postmanFollowChaseUntil) {
+            if (this.postmanRedFlash) {
+                this.postmanRedFlash.setAlpha(chaseActive ? 0.55 : 0);
+            }
+
+            if (chaseActive) {
+                if (this.time.now >= this.postmanYipNextTime) {
+                    this.yipSFX?.play();
+                    this.postmanYipNextTime = this.time.now + 300;
+                }
+
                 if (overlapDistance <= 18) {
                     this.postmanOverlapBufferUntil = this.time.now + 500;
                     this.puppy.anims.stop();
@@ -984,10 +1007,18 @@ export class Game extends Scene
             this.postmanFollowLastPosition = null;
             this.postmanFollowTarget = null;
             this.postmanOverlapBufferUntil = 0;
+            this.postmanYipNextTime = 0;
+            if (this.postmanRedFlash) {
+                this.postmanRedFlash.setAlpha(0);
+            }
             this.puppy.anims.stop();
             this.puppy.setFrame(1);
             this.lastMovedTime = this.time.now;
             return;
+        }
+
+        if (this.postmanRedFlash) {
+            this.postmanRedFlash.setAlpha(0);
         }
 
         const dpadState = this.getDPadState();
