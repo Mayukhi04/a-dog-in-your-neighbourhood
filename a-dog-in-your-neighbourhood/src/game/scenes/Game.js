@@ -19,6 +19,8 @@ export class Game extends Scene
     timerVal = 30;
     timerPassed = 0;
     timer;
+    timerFlashUntil = 0;
+    timerFlashSuffix = '';
     gameContainer;
     gameOverBirdLaunched = false;
   
@@ -143,12 +145,13 @@ export class Game extends Scene
 
         gameContainer.add(fieldTiles);
 
-        this.timer = this.add.text(300, -200, `Timer: ${this.timerVal}`, {
+        this.timer = this.add.text(containerX - 290, -containerY + 150, `${this.timerVal}`, {
             fontFamily: 'PixelFont',
-            fontSize: '80px',
+            fontSize: '52px',
             color: '#ffffff',
-            backgroundColor: '#000000'
+            padding: { x: 12, y: 8 }
         });
+        this.timer.setOrigin(1, 0.5);
 
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
@@ -443,6 +446,14 @@ export class Game extends Scene
 
     update (time, delta)
     {
+        if (this.timerFlashUntil && time > this.timerFlashUntil) {
+            this.timerFlashUntil = 0;
+            this.timerFlashSuffix = '';
+            this.timer.setText(`${this.timerVal}`);
+        } else if (this.timerFlashUntil) {
+            this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+        }
+
         let moveX = 0;
         let moveY = 0;
         let currentAnim = null;
@@ -455,7 +466,7 @@ export class Game extends Scene
                 const passedSeconds = Math.floor(this.timerPassed / 1000);
                 this.timerVal = Math.max(0, this.timerVal - passedSeconds);
                 this.timerPassed %= 1000;
-                this.timer.setText(`Timer: ${this.timerVal}`);
+                this.timer.setText(`${this.timerVal}`);
             }
 
             if (this.bird && this.birdfly) {
@@ -641,7 +652,9 @@ export class Game extends Scene
             this.timerVal = collectedRottenMeat
                 ? Math.max(0, this.timerVal - 5)
                 : this.timerVal + 5;
-            this.timer.setText(`Timer: ${this.timerVal}${collectedRottenMeat ? ' -' : ' +'}`);
+            this.timerFlashUntil = time + 500;
+            this.timerFlashSuffix = collectedRottenMeat ? '-' : '+';
+            this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
             this.spawnMeat();
         }
 
