@@ -9,6 +9,15 @@ export class MenuScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds.jpeg');
         this.load.image('menuField', 'field.jpeg');
+
+        this.load.spritesheet('menuDog', 'dog.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('menuPigeon', 'pigeon_eat-Sheet.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
     }
 
     create() {
@@ -34,6 +43,59 @@ export class MenuScene extends Scene {
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
+        // pigeon sprite
+        if (!this.anims.exists('menu-pigeon-eat')) {
+            this.anims.create({
+                key: 'menu-pigeon-eat',
+                frames: this.anims.generateFrameNumbers('menuPigeon', { start: 0, end: 3 }),
+                frameRate: 5,
+                repeat: -1
+            });
+        }
+
+        const pigeon = this.add.sprite(cx + screenW * 0.105, bgHeight * 0.17, 'menuPigeon');
+        pigeon.setScale(1);
+        pigeon.setFlipX(true);
+        pigeon.setOrigin(1, 0.8);
+        pigeon.setDepth(3);
+        pigeon.play('menu-pigeon-eat');
+
+        // dog sprite
+        if (!this.anims.exists('menu-dog-walk-left')) {
+            this.anims.create({
+                key: 'menu-dog-walk-left',
+                frames: this.anims.generateFrameNumbers('menuDog', { start: 48, end: 50 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('menu-dog-walk-right')) {
+            this.anims.create({
+                key: 'menu-dog-walk-right',
+                frames: this.anims.generateFrameNumbers('menuDog', { start: 0, end: 2 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
+
+        const dog = this.add.sprite(cx - screenW * 0.2, bgHeight * 0.3, 'menuDog');
+        dog.setScale(2);
+        dog.setOrigin(0.5, 0.8);
+        dog.setDepth(3);
+        dog.play('menu-dog-walk-right');
+
+        this.tweens.add({
+            targets: dog,
+            x: cx + screenW * 0.2,
+            duration: 6500,
+            ease: 'Linear',
+            yoyo: true,
+            repeat: -1,
+            onYoyo: () => dog.play('menu-dog-walk-left'),
+            onRepeat: () => dog.play('menu-dog-walk-right')
+        });
+
         this.add.text(cx, cy - 120, 'A Dog In Your Neighbourhood', {
             fontFamily: 'PixelFont',
             fontSize: '36px',
@@ -51,7 +113,7 @@ export class MenuScene extends Scene {
                         opacity: 1;
                     }
                 </style>
-                <input type="text" placeholder="Please type your postcode here" value="" style="width: 310px; height: 48px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; text-transform: uppercase; padding: 0 12px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px);" />
+                <input type="text" placeholder="Please type your postcode here" value="" style="width: 310px; height: 48px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; text-transform: uppercase; padding: 0 12px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
                     <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
                 </div>
