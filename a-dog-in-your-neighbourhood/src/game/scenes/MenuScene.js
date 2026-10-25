@@ -9,6 +9,15 @@ export class MenuScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds.jpeg');
         this.load.image('menuField', 'field.jpeg');
+
+        this.load.spritesheet('menuDog', 'dog.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('menuPigeon', 'pigeon_eat-Sheet.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
     }
 
     create() {
@@ -33,6 +42,59 @@ export class MenuScene extends Scene {
         fieldBg.setOrigin(0.5);
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
+
+        // pigeon sprite
+        if (!this.anims.exists('menu-pigeon-eat')) {
+            this.anims.create({
+                key: 'menu-pigeon-eat',
+                frames: this.anims.generateFrameNumbers('menuPigeon', { start: 0, end: 3 }),
+                frameRate: 5,
+                repeat: -1
+            });
+        }
+
+        const pigeon = this.add.sprite(cx + screenW * 0.105, bgHeight * 0.17, 'menuPigeon');
+        pigeon.setScale(1);
+        pigeon.setFlipX(true);
+        pigeon.setOrigin(1, 0.8);
+        pigeon.setDepth(3);
+        pigeon.play('menu-pigeon-eat');
+
+        // dog sprite
+        if (!this.anims.exists('menu-dog-walk-left')) {
+            this.anims.create({
+                key: 'menu-dog-walk-left',
+                frames: this.anims.generateFrameNumbers('menuDog', { start: 48, end: 50 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('menu-dog-walk-right')) {
+            this.anims.create({
+                key: 'menu-dog-walk-right',
+                frames: this.anims.generateFrameNumbers('menuDog', { start: 0, end: 2 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        }
+
+        const dog = this.add.sprite(cx - screenW * 0.2, bgHeight * 0.3, 'menuDog');
+        dog.setScale(2);
+        dog.setOrigin(0.5, 0.8);
+        dog.setDepth(3);
+        dog.play('menu-dog-walk-right');
+
+        this.tweens.add({
+            targets: dog,
+            x: cx + screenW * 0.2,
+            duration: 6500,
+            ease: 'Linear',
+            yoyo: true,
+            repeat: -1,
+            onYoyo: () => dog.play('menu-dog-walk-left'),
+            onRepeat: () => dog.play('menu-dog-walk-right')
+        });
 
         this.add.text(cx, cy - 120, 'A Dog In Your Neighbourhood', {
             fontFamily: 'PixelFont',
