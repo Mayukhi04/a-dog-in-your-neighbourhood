@@ -16,14 +16,12 @@ export class Game extends Scene
     isTransitioning = false;
 
     score = 0;
-<<<<<<< HEAD
+
     meatHasSpawned = false;
     meatCollectedCount = 0;
     cat;
     catSpeed = 145;
     catRunDirection = 'right';
-=======
->>>>>>> 6bd8b5696893bfba3f78711a387a4cf8790f5c8e
   
     timerVal = 30;
     timerPassed = 0;
