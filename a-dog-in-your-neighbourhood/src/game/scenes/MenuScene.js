@@ -89,11 +89,26 @@ export class MenuScene extends Scene {
     async create() {
         const clickSfx = this.sound.add('click', { volume: 0.5 });
         const diceRollSfx = this.sound.add('dice_roll', { volume: 0.7 });
+        this.sound.pauseOnBlur = false;
         this.slowSong = this.sound.add('slow_song', {
             volume: 0.55,
             loop: true
         });
-        this.slowSong.play();
+
+        const startMenuMusic = () => {
+            if (!this.slowSong) return;
+
+            if (this.sound.context && this.sound.context.state === 'suspended') {
+                this.sound.context.resume();
+            }
+
+            if (!this.slowSong.isPlaying) {
+                this.slowSong.play();
+            }
+        };
+
+        this.input.once('pointerdown', startMenuMusic, this);
+        this.input.keyboard?.on('keydown', startMenuMusic, this);
 
         this.events.once('shutdown', () => {
             if (this.slowSong) {
@@ -344,7 +359,11 @@ export class MenuScene extends Scene {
                     throw new Error(message.includes('postcode') || message.includes('invalid') || message.includes('not found') ? 'Invalid postcode' : 'Invalid postcode');
                 }
 
-                this.scene.start('Game');
+                const mapData = await response.json();
+                this.scene.start('Game', {
+                    postcode: cleanPostcode,
+                    generatedMap: mapData
+                });
             } catch (error) {
                 console.error(error);
                 errorText.textContent = 'Invalid postcode';

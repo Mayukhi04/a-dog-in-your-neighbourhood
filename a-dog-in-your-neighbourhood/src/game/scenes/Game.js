@@ -30,9 +30,15 @@ export class Game extends Scene
     postmanFollowTriggered = false;
     postmanFollowDistance = 0;
     postmanFollowMaxDistance = 400;
+    postmanFollowDelayUntil = 0;
+    postmanFollowChaseUntil = 0;
     postmanFollowLastPosition = null;
     postmanLastDetectionPosition = null;
     postmanFollowTarget = null;
+    postmanFollowRoute = [];
+    postmanFollowRouteIndex = 0;
+    postmanTripTriggered = false;
+    postmanOverlapBufferUntil = 0;
     postmanDirectionX = 1;
     postmanDirectionY = 0;
     cat;
@@ -101,9 +107,15 @@ export class Game extends Scene
         this.postmanFollowTriggered = false;
         this.postmanFollowDistance = 0;
         this.postmanFollowMaxDistance = 400;
+        this.postmanFollowDelayUntil = 0;
+        this.postmanFollowChaseUntil = 0;
         this.postmanFollowLastPosition = null;
         this.postmanLastDetectionPosition = null;
         this.postmanFollowTarget = null;
+        this.postmanFollowRoute = [];
+        this.postmanFollowRouteIndex = 0;
+        this.postmanTripTriggered = false;
+        this.postmanOverlapBufferUntil = 0;
         this.postmanDirectionX = 1;
         this.postmanDirectionY = 0;
         this.cat = null;
@@ -136,6 +148,7 @@ export class Game extends Scene
 
     preload ()
     {
+        const cacheBust = `?cacheBust=${Date.now()}`;
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds_bottom.jpeg');
@@ -163,10 +176,10 @@ export class Game extends Scene
             frameHeight: 32
         });
 
-        this.load.json('roadMaze', '../road_maze.json');
+        this.load.json('roadMaze', `../road_maze.json${cacheBust}`);
         if (import.meta.env.VITE_GITHUB_PAGES === 'true') {
             for (const city of CITIES) {
-                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json`);
+                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json${cacheBust}`);
             }
         }
 
@@ -288,7 +301,7 @@ export class Game extends Scene
 
         // Get the exported road data
         const mapKey = data.city ? `cityMap-${data.city}` : 'roadMaze';
-        const mapData = this.cache.json.get(mapKey);
+        const mapData = data.generatedMap || this.cache.json.get(mapKey);
 
         if (!mapData || !mapData.roads) {
             console.error(`Map data could not be loaded for "${data.city ?? 'postcode'}".`);
@@ -719,8 +732,6 @@ export class Game extends Scene
                     this.timerFlashUntil = time + 500;
                     this.timerFlashSuffix = '+';
                     this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
-                    this.score++;
-                    this.scoreText.setText(`Score: ${this.score}`);
                     this.spawnMeat();
                 }
             } else {
@@ -911,45 +922,68 @@ export class Game extends Scene
         if (!this.cursors || !this.puppy) return;
         if (this.dogCaught) return;
 
-        if (this.postman?.visible && !this.postmanFollowTriggered) {
-            const previousPosition = this.postmanLastDetectionPosition || {
-                x: this.postman.x,
-                y: this.postman.y
-            };
-            const passDistance = this.getClosestPointOnSegment(
-                this.puppy.x,
-                this.puppy.y,
-                previousPosition.x,
-                previousPosition.y,
-                this.postman.x,
-                this.postman.y
-            ).distance;
+        if (this.postman?.visible && !this.postmanFollowTriggered && !this.postmanTripTriggered) {
+            const directDistance = Math.hypot(
+                this.postman.x - this.puppy.x,
+                this.postman.y - this.puppy.y
+            );
 
-            this.postmanLastDetectionPosition = { x: this.postman.x, y: this.postman.y };
-
-            if (passDistance <= 100) {
+            if (directDistance <= 18) {
                 this.postmanFollowTriggered = true;
+                this.postmanTripTriggered = true;
+                this.postmanFollowChaseUntil = this.time.now + 3000;
+                this.postmanOverlapBufferUntil = 0;
                 this.postmanFollowDistance = 0;
                 this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
-                this.updatePostmanFollowTarget();
+                this.postmanFollowTarget = { x: this.postman.x, y: this.postman.y };
+
+                const route = this.getPostmanRoute();
+                const routeIndex = this.getNearestRouteIndex(this.postman.x, this.postman.y, route);
+                this.postmanFollowRoute = route.slice(Math.max(0, routeIndex));
+                this.postmanFollowRouteIndex = 0;
             }
         }
 
-        if (
-            this.postmanFollowTriggered &&
-            this.postmanFollowDistance < this.postmanFollowMaxDistance &&
-            this.postman?.visible
-        ) {
-            const { x, y } = this.postmanFollowLastPosition;
-            this.postmanFollowDistance += Math.hypot(this.postman.x - x, this.postman.y - y);
-            this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
-            if (this.postman?.visible) {
+        if (this.postmanFollowTriggered && this.postman?.visible) {
+            const overlapDistance = Math.hypot(
+                this.postman.x - this.puppy.x,
+                this.postman.y - this.puppy.y
+            );
+
+            if (this.time.now < this.postmanFollowChaseUntil) {
+                if (overlapDistance <= 18) {
+                    this.postmanOverlapBufferUntil = this.time.now + 500;
+                    this.puppy.anims.stop();
+                    this.puppy.setFrame(1);
+                    return;
+                }
+
+                if (this.time.now < this.postmanOverlapBufferUntil) {
+                    this.puppy.anims.stop();
+                    this.puppy.setFrame(1);
+                    return;
+                }
+
                 this.updatePostmanFollowTarget();
-            }
-            if (this.postmanFollowDistance < this.postmanFollowMaxDistance) {
                 this.followPostman(delta);
+
+                this.postmanFollowDistance += Math.hypot(
+                    this.postman.x - (this.postmanFollowLastPosition?.x ?? this.postman.x),
+                    this.postman.y - (this.postmanFollowLastPosition?.y ?? this.postman.y)
+                );
+                this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
                 return;
             }
+
+            this.postmanFollowTriggered = false;
+            this.postmanFollowDistance = 0;
+            this.postmanFollowLastPosition = null;
+            this.postmanFollowTarget = null;
+            this.postmanOverlapBufferUntil = 0;
+            this.puppy.anims.stop();
+            this.puppy.setFrame(1);
+            this.lastMovedTime = this.time.now;
+            return;
         }
 
         const dpadState = this.getDPadState();
@@ -1088,64 +1122,43 @@ export class Game extends Scene
     }
 
     followPostman(delta) {
-        if (!this.puppy || !this.postmanFollowTarget) {
+        if (!this.puppy || this.postmanFollowRoute.length === 0) {
             return;
         }
 
-        const step = 220 * delta / 1000;
-        let bestMove = null;
-        let smallestRemainingDistance = Infinity;
-
-        for (const segment of this.roadSegments) {
-            const currentPoint = this.getClosestPointOnSegment(
-                this.puppy.x,
-                this.puppy.y,
-                segment.x1,
-                segment.y1,
-                segment.x2,
-                segment.y2
-            );
-            if (currentPoint.distance > this.roadWidthThreshold) {
-                continue;
-            }
-
-            const targetPoint = this.getClosestPointOnSegment(
-                this.postmanFollowTarget.x,
-                this.postmanFollowTarget.y,
-                segment.x1,
-                segment.y1,
-                segment.x2,
-                segment.y2
-            );
-            const dx = targetPoint.x - currentPoint.x;
-            const dy = targetPoint.y - currentPoint.y;
-            const distance = Math.hypot(dx, dy);
-            const moveDistance = Math.min(step, distance);
-            const x = distance === 0
-                ? currentPoint.x
-                : currentPoint.x + dx / distance * moveDistance;
-            const y = distance === 0
-                ? currentPoint.y
-                : currentPoint.y + dy / distance * moveDistance;
-            const remainingDistance = Math.hypot(
-                this.postmanFollowTarget.x - x,
-                this.postmanFollowTarget.y - y
-            );
-
-            if (remainingDistance < smallestRemainingDistance) {
-                smallestRemainingDistance = remainingDistance;
-                bestMove = { x, y, dx, dy };
-            }
-        }
-
-        if (!bestMove) {
+        const route = this.postmanFollowRoute;
+        const targetIndex = Math.min(this.postmanFollowRouteIndex, route.length - 1);
+        const target = route[targetIndex];
+        if (!target) {
             return;
         }
 
-        this.puppy.setPosition(bestMove.x, bestMove.y);
-        const anim = Math.abs(bestMove.dx) >= Math.abs(bestMove.dy)
-            ? (bestMove.dx < 0 ? 'walk-left' : 'walk-right')
-            : (bestMove.dy < 0 ? 'walk-up' : 'walk-down');
+        const dx = target.x - this.puppy.x;
+        const dy = target.y - this.puppy.y;
+        const distance = Math.hypot(dx, dy);
+        const step = this.moveSpeed * (delta / 1000) * 60;
+
+        if (distance <= step) {
+            this.puppy.setPosition(target.x, target.y);
+            if (this.postmanFollowRouteIndex < route.length - 1) {
+                this.postmanFollowRouteIndex += 1;
+            } else if (this.time.now >= this.postmanFollowChaseUntil) {
+                this.postmanFollowTriggered = false;
+                this.postmanFollowDistance = 0;
+                this.postmanFollowTarget = null;
+                this.postmanFollowRoute = [];
+                this.postmanFollowRouteIndex = 0;
+            }
+        } else {
+            const nextX = this.puppy.x + (dx / distance) * step;
+            const nextY = this.puppy.y + (dy / distance) * step;
+            this.puppy.setPosition(nextX, nextY);
+        }
+
+        const anim = Math.abs(dx) >= Math.abs(dy)
+            ? (dx < 0 ? 'walk-left' : 'walk-right')
+            : (dy < 0 ? 'walk-up' : 'walk-down');
+
         if (this.anims.exists(anim)) {
             this.puppy.play(anim, true);
             this.lastAnim = anim;
@@ -1162,16 +1175,36 @@ export class Game extends Scene
         };
     }
 
+    getNearestRouteIndex(x, y, route) {
+        if (!route || route.length === 0) {
+            return 0;
+        }
+
+        let nearestIndex = 0;
+        let nearestDistance = Infinity;
+
+        for (let i = 0; i < route.length; i++) {
+            const point = route[i];
+            const distance = Math.hypot(x - point.x, y - point.y);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+
+        return nearestIndex;
+    }
+
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score % 10 == 0) {
+        if (this.score % 3 == 0) {
             this.startPostmanCrossing();
         }
     }
 
     startPostmanCrossing() {
-        if (this.postmanCrossingStarted || !this.postman || !this.gameContainer) {
+        if (this.postmanCrossingStarted || !this.gameContainer) {
             return;
         }
 
@@ -1181,7 +1214,15 @@ export class Game extends Scene
             return;
         }
 
+        if (!this.postman) {
+            this.postman = this.add.sprite(10, 50, 'postman');
+            this.postman.setScale(0.07);
+            this.postman.setVisible(false);
+            this.gameContainer.add(this.postman);
+        }
+
         this.postmanCrossingStarted = true;
+        this.postmanTripTriggered = false;
         this.postman.setPosition(route[0].x, route[0].y);
         this.postmanLastDetectionPosition = { x: route[0].x, y: route[0].y };
         this.postman.setVisible(true);
@@ -1290,6 +1331,15 @@ export class Game extends Scene
                 if (index < route.length) {
                     this.movePostmanAlongRoute(route, index + 1);
                 } else {
+                    this.postmanCrossingStarted = false;
+                    this.postmanFollowTriggered = false;
+                    this.postmanTripTriggered = false;
+                    this.postmanFollowDistance = 0;
+                    this.postmanFollowDelayUntil = 0;
+                    this.postmanFollowChaseUntil = 0;
+                    this.postmanFollowLastPosition = null;
+                    this.postmanFollowTarget = null;
+                    this.postmanLastDetectionPosition = null;
                     this.postman?.destroy();
                     this.postman = null;
                 }
@@ -1530,7 +1580,7 @@ export class Game extends Scene
             return;
         }
 
-        if (Math.random() >= 0.9) {
+        if (Math.random() >= 0.6) {
             return;
         }
 
