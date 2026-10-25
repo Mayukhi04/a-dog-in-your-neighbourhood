@@ -690,6 +690,8 @@ export class Game extends Scene
                     this.timerFlashUntil = time + 500;
                     this.timerFlashSuffix = '+';
                     this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+                    this.score++;
+                    this.scoreText.setText(`Score: ${this.score}`);
                     this.spawnMeat();
                 }
             } else {
