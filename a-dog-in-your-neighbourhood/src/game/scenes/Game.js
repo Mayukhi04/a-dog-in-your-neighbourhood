@@ -108,6 +108,10 @@ export class Game extends Scene
         });
 
         this.bgMusic.play();
+        this.events.once('shutdown', () => {
+            this.bgMusic.stop();
+            this.bgMusic.destroy();
+        });
 
         this.chompSFX = this.sound.add('chomp_theme', {
             volume: 5,
@@ -157,6 +161,7 @@ export class Game extends Scene
         this.gameContainer = gameContainer;
 
         const tilesW = gameW - 120;
+        this.gameFieldWidth = tilesW;
         const tilesH = gameH - 100;
         const fieldTiles = this.add.tileSprite(0, 0, tilesW, tilesH, 'field');
 
@@ -483,6 +488,8 @@ export class Game extends Scene
                 this.dpadPositions[direction].y + (active ? 4 : 0)
             );
         }
+
+        
     }
 
     update (time, delta)
@@ -584,7 +591,7 @@ export class Game extends Scene
             const dx = targetX - this.birdfly.x;
             const dy = targetY - this.birdfly.y;
             const distance = Math.hypot(dx, dy);
-            const step = Math.min(100 * delta / 1000, distance);
+            const step = Math.min(110 * delta / 1000, distance);
 
             if (dx < 0) {
                 this.birdfly.play('flyingLeft', true);
@@ -606,11 +613,11 @@ export class Game extends Scene
                 this.puppy.y - this.birdfly.y
             );
 
-            if (birdDistance < 20) {
+            if (birdDistance < 25) {
                 this.dogCaught = true;
                 this.birdEscapeDirection = this.birdfly.x < 0 ? -1 : 1;
-                const visibleHalfWidth = this.cameras.main.width / (2 * this.gameContainer.scaleX);
-                this.birdEscapeTargetX = this.birdEscapeDirection * (visibleHalfWidth + 100);
+                const halfFieldWidth = this.gameFieldWidth / 2;
+                this.birdEscapeTargetX = this.birdEscapeDirection * (halfFieldWidth + 100);
                 this.puppy.anims.stop();
                 this.puppy.setFrame(this.lastHorizontalDir === 'left' ? 51 : 3);
             }
