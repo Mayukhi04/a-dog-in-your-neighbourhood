@@ -11,7 +11,7 @@ export class GameOverScene extends Scene {
         this.load.image('nightField', 'night_field.jpg');
     }
 
-    create() {
+    create(data = {}) {
         // ds overlay
         const screenW = this.cameras.main.width;
         const screenH = this.cameras.main.height;
@@ -43,6 +43,15 @@ export class GameOverScene extends Scene {
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 6,
+            align: 'center',
+        }).setOrigin(0.5);
+
+        this.add.text(cx, cy - 55, `Score: ${data.score ?? 0}`, {
+            fontFamily: 'PixelFont',
+            fontSize: '24px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4,
             align: 'center',
         }).setOrigin(0.5);
 

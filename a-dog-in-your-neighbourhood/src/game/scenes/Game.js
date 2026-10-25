@@ -680,7 +680,7 @@ export class Game extends Scene
             this.isTransitioning = true;
             this.input.keyboard.clearCaptures();
             this.input.keyboard.removeAllListeners();
-            this.scene.start('GameOverScene');
+            this.scene.start('GameOverScene', { score: this.score });
         }
 
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
@@ -827,6 +827,7 @@ export class Game extends Scene
             this.timerFlashUntil = time + 500;
             this.timerFlashSuffix = collectedRottenMeat ? '-' : '+';
             this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+            this.score++;
             this.spawnMeat();
         }
     }
