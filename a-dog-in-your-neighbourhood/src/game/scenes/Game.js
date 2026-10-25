@@ -20,7 +20,6 @@ export class Game extends Scene
 
     score = 0;
     meatHasSpawned = false;
-    meatHasSpawned = false;
     meatCollectedCount = 0;
     cat;
     catSpeed = 145;
