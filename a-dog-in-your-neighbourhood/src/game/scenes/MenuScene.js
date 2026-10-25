@@ -328,7 +328,7 @@ export class MenuScene extends Scene {
         let selectedCity = '';
         form.node.addEventListener('click', () => clickSfx.play());
         errorText.style.color = this.hardModeEnabled ? '#d8ffd0' : '#ffe3e3';
-        errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
+        errorText.textContent = '';
 
         if (isCityPickerMode) {
             postcodeRow.style.display = 'none';
@@ -370,7 +370,7 @@ export class MenuScene extends Scene {
 
             const cleanPostcode = postcode.toUpperCase();
             postcodeInput.value = cleanPostcode;
-            errorText.textContent = '';
+            errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
 
             try {
                 const response = await fetch('http://localhost:3001/api/generate-map', {
@@ -425,7 +425,7 @@ export class MenuScene extends Scene {
             cityPickerOptions.querySelectorAll('[role="option"]').forEach((option) => {
                 option.setAttribute('aria-selected', String(option.dataset.city === selectedCity));
             });
-            errorText.textContent = '';
+            errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
         });
 
         pigeon.setInteractive({ useHandCursor: true });
@@ -474,7 +474,7 @@ export class MenuScene extends Scene {
             cityPickerOptions.querySelectorAll('[role="option"]').forEach((cityOption) => {
                 cityOption.setAttribute('aria-selected', String(cityOption === option));
             });
-            errorText.textContent = '';
+            errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
         });
         cityPicker.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
