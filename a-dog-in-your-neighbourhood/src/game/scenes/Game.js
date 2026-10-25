@@ -405,14 +405,14 @@ export class Game extends Scene
 
         this.anims.create({
             key: 'cat-run-right',
-            frames: this.anims.generateFrameNumbers('cat', { start: 15, end: 17 }),
+            frames: this.anims.generateFrameNumbers('cat', { start: 13, end: 15 }),
             frameRate: 8,
             repeat: -1
         });
 
         this.anims.create({
             key: 'cat-run-left',
-            frames: this.anims.generateFrameNumbers('cat', { start: 27, end: 29 }),
+            frames: this.anims.generateFrameNumbers('cat', { start: 24, end: 26 }),
             frameRate: 8,
             repeat: -1
         });
@@ -1063,7 +1063,7 @@ export class Game extends Scene
             return;
         }
 
-        if (Math.random() >= 0.2) {
+        if (Math.random() >= 0.9) {
             return;
         }
 
