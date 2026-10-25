@@ -5,6 +5,9 @@ export class Game extends Scene
     cursors;
     puppy;
     bird;
+    dogCaught = false;
+    birdEscapeDirection = 0;
+    birdEscapeTargetX = 0;
 
     moveSpeed = 3;
     lastAnim = 'walk-up';
@@ -584,8 +587,10 @@ export class Game extends Scene
 
         }
 
-            //this.puppy.x and this.puppy.y
-        if (this.timerVal === 0 && this.birdfly?.visible && this.puppy) {
+    
+        if (this.timerVal === 0 && this.birdfly?.visible && this.puppy && !this.dogCaught) {
+
+            
             const targetX = this.puppy.x + 25;
             const targetY = this.puppy.y - 20;
             const dx = targetX - this.birdfly.x;
@@ -607,6 +612,35 @@ export class Game extends Scene
 
         }
 
+        if (!this.dogCaught && this.gameOverBirdLaunched && this.birdfly?.visible && this.puppy) {
+            const birdDistance = Math.hypot(
+                this.puppy.x - this.birdfly.x,
+                this.puppy.y - this.birdfly.y
+            );
+
+            if (birdDistance < 20) {
+                this.dogCaught = true;
+                this.birdEscapeDirection = this.birdfly.x < 0 ? -1 : 1;
+                const visibleHalfWidth = this.cameras.main.width / (2 * this.gameContainer.scaleX);
+                this.birdEscapeTargetX = this.birdEscapeDirection * (visibleHalfWidth + 100);
+                this.puppy.anims.stop();
+                this.puppy.setFrame(this.lastHorizontalDir === 'left' ? 51 : 3);
+            }
+        }
+
+        if (this.dogCaught && this.birdfly?.visible && this.puppy) {
+            const step = 100 * delta / 1000;
+            const remainingDistance = Math.abs(this.birdEscapeTargetX - this.birdfly.x);
+            const movement = Math.min(step, remainingDistance);
+
+            this.birdfly.x += this.birdEscapeDirection * movement;
+            this.birdfly.play(this.birdEscapeDirection < 0 ? 'flyingLeft' : 'flying', true);
+            this.puppy.setPosition(
+                this.birdfly.x - this.birdEscapeDirection * 30,
+                this.birdfly.y + 20
+            );
+        }
+
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
 
         if (time >= this.nextYipTime && !isCurrentlyLayingDown) {
@@ -619,6 +653,7 @@ export class Game extends Scene
         this.updateDPadVisualState();
 
         if (!this.cursors || !this.puppy) return;
+        if (this.dogCaught) return;
 
         const dpadState = this.getDPadState();
 
@@ -752,7 +787,6 @@ export class Game extends Scene
             this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
             this.spawnMeat();
         }
-
     }
 
     // projection helper to map player point onto vector line segment
