@@ -56,6 +56,31 @@ export class GameOverScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
+        // check/set high score
+        const currentHighScore = parseInt(localStorage.getItem('highscore')) || 0;
+
+        if (data.score > currentHighScore) {
+            localStorage.setItem('highscore', data.score);
+
+            this.add.text(cx, DS_TOP_SCREEN.y + 185, 'New high score!', {
+                fontFamily: 'PixelFont',
+                fontSize: '18px',
+                color: '#f12b2b',
+                stroke: '#000000',
+                strokeThickness: 4,
+                align: 'center',
+            }).setOrigin(0.5);
+        } else {
+            this.add.text(cx, DS_TOP_SCREEN.y + 185, `Highscore: ${currentHighScore}`, {
+                fontFamily: 'PixelFont',
+                fontSize: '18px',
+                color: '#cdcdcd',
+                stroke: '#000000',
+                strokeThickness: 4,
+                align: 'center',
+            }).setOrigin(0.5);
+        }
+
         const playAgainButton = this.add.dom(cx, DS_TOP_SCREEN.y + 235).createFromHTML(`
             <button type="button" style="display: inline-block; width: fit-content; height: auto; border: 0; margin: 0; padding: 0; line-height: 1; background: transparent; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
         `);
