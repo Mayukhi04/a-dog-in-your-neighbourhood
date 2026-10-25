@@ -1,14 +1,6 @@
 import { Scene } from 'phaser';
 import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
-
-// Add each location's image/map asset keys here when the city artwork is ready.
-const STATIC_CITIES = [
-    { value: 'nottingham', label: 'Nottingham' },
-    { value: 'london', label: 'London' },
-    { value: 'manchester', label: 'Manchester' },
-    { value: 'birmingham', label: 'Birmingham' },
-    { value: 'bristol', label: 'Bristol' }
-];
+import { CITIES } from '../cities';
 
 export class MenuScene extends Scene {
     constructor() {
@@ -19,6 +11,7 @@ export class MenuScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('menuField', 'field.jpeg');
+        this.load.audio('click', 'audio/click.mp3');
 
         this.load.spritesheet('menuDog', 'dog.png', {
             frameWidth: 32,
@@ -31,6 +24,7 @@ export class MenuScene extends Scene {
     }
 
     create() {
+        const clickSfx = this.sound.add('click', { volume: 0.5 });
         const cx = DESIGN_WIDTH / 2;
         const cy = DESIGN_HEIGHT / 2;
 
@@ -135,14 +129,69 @@ export class MenuScene extends Scene {
                         color: rgba(255,255,255,0.95);
                         opacity: 1;
                     }
+                    #city-picker {
+                        display: none;
+                        position: relative;
+                        width: 280px;
+                        font-family: 'PixelFont', sans-serif;
+                    }
+                    #city-picker-trigger,
+                    #city-picker-options button {
+                        width: 100%;
+                        border: 4px solid rgba(255,255,255,0.9);
+                        border-radius: 0;
+                        background: rgba(24, 31, 42, 0.7);
+                        color: #ffffff;
+                        font: 16px 'PixelFont', sans-serif;
+                        text-transform: uppercase;
+                        box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18);
+                        appearance: none;
+                        -webkit-appearance: none;
+                        image-rendering: pixelated;
+                        -webkit-font-smoothing: none;
+                        text-align: center;
+                        cursor: pointer;
+                    }
+                    #city-picker-trigger {
+                        height: 42px;
+                        padding: 0 8px;
+                        filter: contrast(1.1) brightness(0.9) blur(0.2px);
+                    }
+                    #city-picker-options {
+                        position: absolute;
+                        z-index: 20;
+                        bottom: calc(100% + 4px);
+                        left: 0;
+                        display: none;
+                        width: 100%;
+                        max-height: 96px;
+                        overflow-y: auto;
+                        background: rgba(24, 31, 42, 0.96);
+                        box-shadow: 0 0 0 2px rgba(0,0,0,0.6);
+                    }
+                    #city-picker-options.open {
+                        display: block;
+                    }
+                    #city-picker-options button {
+                        min-height: 32px;
+                        padding: 2px 8px;
+                        border-width: 2px 4px 0;
+                    }
+                    #city-picker-options button:hover,
+                    #city-picker-options button:focus {
+                        background: rgba(80, 115, 74, 0.95);
+                        outline: none;
+                    }
                 </style>
                 <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
-                <select id="city-select" aria-label="Choose a city" style="display:none; width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" >
-                    <option value="" selected disabled>Choose a city</option>
-                    ${STATIC_CITIES.map(({ value, label }) => `<option value="${value}">${label}</option>`).join('')}
-                </select>
+                <div id="city-picker">
+                    <button id="city-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">Choose a city</button>
+                    <div id="city-picker-options" role="listbox" aria-label="Choose a city">
+                        ${CITIES.map(({ value, label }) => `<button type="button" role="option" data-city="${value}" aria-selected="false">${label}</button>`).join('')}
+                    </div>
+                </div>
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
-                    <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
+                    <span id="start-link" style="display: inline-block; width: fit-content; line-height: 1; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
                 </div>
                 <div id="postcode-error" style="min-height: 18px; color: #ffe3e3; font-size: 14px; text-align: center; max-width: 300px; font-weight: 700;"> </div>
             </div>
@@ -151,27 +200,31 @@ export class MenuScene extends Scene {
         form.setDepth(10);
 
         const postcodeInput = form.node.querySelector('input');
-        const citySelect = form.node.querySelector('#city-select');
+        const cityPicker = form.node.querySelector('#city-picker');
+        const cityPickerTrigger = form.node.querySelector('#city-picker-trigger');
+        const cityPickerOptions = form.node.querySelector('#city-picker-options');
         const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
-        const isFixedMapDeployment = import.meta.env.VITE_GITHUB_PAGES === 'true';
+        const isCityPickerMode = import.meta.env.VITE_GITHUB_PAGES === 'true';
+        let selectedCity = '';
+        form.node.addEventListener('click', () => clickSfx.play());
 
-        if (isFixedMapDeployment) {
+        if (isCityPickerMode) {
             postcodeInput.style.display = 'none';
-            citySelect.style.display = 'block';
+            cityPicker.style.display = 'block';
         } else {
-            citySelect.style.display = 'none';
+            cityPicker.style.display = 'none';
         }
 
         const handleGenerate = async () => {
-            if (isFixedMapDeployment) {
-                if (!citySelect.value) {
+            if (isCityPickerMode) {
+                if (!selectedCity) {
                     errorText.textContent = 'Please choose a city.';
                     return;
                 }
 
                 errorText.textContent = '';
-                this.scene.start('Game');
+                this.scene.start('Game', { city: selectedCity });
                 return;
             }
 
@@ -222,8 +275,42 @@ export class MenuScene extends Scene {
                 handleGenerate();
             }
         });
-        citySelect.addEventListener('change', () => {
+
+        cityPickerTrigger.addEventListener('click', () => {
+            const isOpen = cityPickerOptions.classList.toggle('open');
+            cityPickerTrigger.setAttribute('aria-expanded', String(isOpen));
+        });
+        cityPickerOptions.addEventListener('click', (event) => {
+            const option = event.target.closest('[data-city]');
+            if (!option) {
+                return;
+            }
+
+            selectedCity = option.dataset.city;
+            cityPickerTrigger.textContent = option.textContent;
+            cityPickerTrigger.setAttribute('aria-expanded', 'false');
+            cityPickerOptions.classList.remove('open');
+            cityPickerOptions.querySelectorAll('[role="option"]').forEach((cityOption) => {
+                cityOption.setAttribute('aria-selected', String(cityOption === option));
+            });
             errorText.textContent = '';
+        });
+        cityPicker.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                cityPickerOptions.classList.remove('open');
+                cityPickerTrigger.setAttribute('aria-expanded', 'false');
+                cityPickerTrigger.focus();
+            }
+        });
+        const closeCityPicker = (event) => {
+            if (!cityPicker.contains(event.target)) {
+                cityPickerOptions.classList.remove('open');
+                cityPickerTrigger.setAttribute('aria-expanded', 'false');
+            }
+        };
+        document.addEventListener('pointerdown', closeCityPicker);
+        this.events.once('shutdown', () => {
+            document.removeEventListener('pointerdown', closeCityPicker);
         });
     }
 }
