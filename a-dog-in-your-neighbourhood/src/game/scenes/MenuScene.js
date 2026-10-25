@@ -292,7 +292,7 @@ export class MenuScene extends Scene {
                         outline: none;
                     }
                 </style>
-                <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
+                <div id="postcode-row" style="display:flex; align-items:center; gap:10px; justify-content:center;">
                     <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
                     <button id="random-postcode" type="button" aria-label="Random postcode" title="Random postcode" style="height: 42px; min-width: 42px; width: 42px; padding: 0; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; cursor:pointer; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); line-height: 1; display:flex; align-items:center; justify-content:center; background-image: url('${diceIconUrl}'); background-size: 72% 72%; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; image-rendering: crisp-edges; -ms-interpolation-mode: nearest-neighbor; filter: contrast(1.15) saturate(1.1); transform: translateZ(0);"> </button>
                 </div>
@@ -315,6 +315,7 @@ export class MenuScene extends Scene {
         form.setDepth(10);
 
         const postcodeInput = form.node.querySelector('input');
+        const postcodeRow = form.node.querySelector('#postcode-row');
         const cityPicker = form.node.querySelector('#city-picker');
         const cityPickerRow = form.node.querySelector('#city-picker-row');
         const cityPickerTrigger = form.node.querySelector('#city-picker-trigger');
@@ -330,12 +331,14 @@ export class MenuScene extends Scene {
         errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
 
         if (isCityPickerMode) {
+            postcodeRow.style.display = 'none';
             postcodeInput.style.display = 'none';
             randomPostcodeButton.style.display = 'none';
             cityPicker.style.display = 'block';
             cityPickerRow.style.display = 'flex';
             randomCityButton.style.display = 'flex';
         } else {
+            postcodeRow.style.display = 'flex';
             postcodeInput.style.display = 'block';
             randomPostcodeButton.style.display = 'inline-flex';
             cityPicker.style.display = 'none';
