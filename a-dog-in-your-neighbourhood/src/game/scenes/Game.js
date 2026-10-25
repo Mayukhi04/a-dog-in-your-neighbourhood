@@ -258,6 +258,7 @@ export class Game extends Scene
         });
         this.scoreText.setOrigin(1, 0.5);
 
+        // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
 
         if (!mapData || !mapData.roads) {
