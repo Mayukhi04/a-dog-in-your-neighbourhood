@@ -60,7 +60,7 @@ export class GameOverScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
-        this.add.text(cx, DS_TOP_SCREEN.y + 160, `Score: ${data.score ?? 0}`, {
+        this.add.text(cx, DS_TOP_SCREEN.y + 160, `${data.hardMode ? 'Hard mode score' : 'Score'}: ${data.score ?? 0}`, {
             fontFamily: 'PixelFont',
             fontSize: '24px',
             color: '#ffffff',
@@ -70,10 +70,11 @@ export class GameOverScene extends Scene {
         }).setOrigin(0.5);
 
         // check/set high score
-        const currentHighScore = parseInt(localStorage.getItem('highscore')) || 0;
+        const highScoreKey = data.hardMode ? 'highscore-hard' : 'highscore';
+        const currentHighScore = parseInt(localStorage.getItem(highScoreKey)) || 0;
 
         if (data.score > currentHighScore) {
-            localStorage.setItem('highscore', data.score);
+            localStorage.setItem(highScoreKey, data.score);
 
             this.add.text(cx, DS_TOP_SCREEN.y + 185, 'New high score!', {
                 fontFamily: 'PixelFont',
@@ -84,7 +85,7 @@ export class GameOverScene extends Scene {
                 align: 'center',
             }).setOrigin(0.5);
         } else {
-            this.add.text(cx, DS_TOP_SCREEN.y + 185, `Highscore: ${currentHighScore}`, {
+            this.add.text(cx, DS_TOP_SCREEN.y + 185, `${data.hardMode ? 'Hard highscore' : 'Highscore'}: ${currentHighScore}`, {
                 fontFamily: 'PixelFont',
                 fontSize: '18px',
                 color: '#cdcdcd',

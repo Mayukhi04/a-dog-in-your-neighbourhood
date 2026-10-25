@@ -64,6 +64,8 @@ async function loadRandomPostcodes() {
 }
 
 export class MenuScene extends Scene {
+    hardModeEnabled = false;
+
     constructor() {
         super('MenuScene');
     }
@@ -324,6 +326,8 @@ export class MenuScene extends Scene {
         const isCityPickerMode = import.meta.env.VITE_GITHUB_PAGES === 'true';
         let selectedCity = '';
         form.node.addEventListener('click', () => clickSfx.play());
+        errorText.style.color = this.hardModeEnabled ? '#d8ffd0' : '#ffe3e3';
+        errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
 
         if (isCityPickerMode) {
             postcodeInput.style.display = 'none';
@@ -347,7 +351,7 @@ export class MenuScene extends Scene {
                 }
 
                 errorText.textContent = '';
-                this.scene.start('Game', { city: selectedCity });
+                this.scene.start('Game', { city: selectedCity, hardMode: false });
                 return;
             }
 
@@ -380,7 +384,8 @@ export class MenuScene extends Scene {
                 const mapData = await response.json();
                 this.scene.start('Game', {
                     postcode: cleanPostcode,
-                    generatedMap: mapData
+                    generatedMap: mapData,
+                    hardMode: this.hardModeEnabled
                 });
             } catch (error) {
                 console.error(error);
@@ -399,7 +404,7 @@ export class MenuScene extends Scene {
 
             const randomPostcode = postcodeCatalogue[Math.floor(Math.random() * postcodeCatalogue.length)];
             postcodeInput.value = randomPostcode.toUpperCase();
-            errorText.textContent = '';
+            errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
         });
 
         randomCityButton.addEventListener('click', (event) => {
@@ -415,6 +420,15 @@ export class MenuScene extends Scene {
                 option.setAttribute('aria-selected', String(option.dataset.city === selectedCity));
             });
             errorText.textContent = '';
+        });
+
+        pigeon.setInteractive({ useHandCursor: true });
+        pigeon.on('pointerdown', () => {
+            clickSfx.play();
+
+            this.hardModeEnabled = !this.hardModeEnabled;
+            errorText.style.color = this.hardModeEnabled ? '#d8ffd0' : '#ffe3e3';
+            errorText.textContent = this.hardModeEnabled ? 'Hard mode enabled!' : '';
         });
 
         if (randomPostcodeButton) {
