@@ -1,14 +1,6 @@
 import { Scene } from 'phaser';
 import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
-
-// Add each location's image/map asset keys here when the city artwork is ready.
-const STATIC_CITIES = [
-    { value: 'nottingham', label: 'Nottingham' },
-    { value: 'london', label: 'London' },
-    { value: 'manchester', label: 'Manchester' },
-    { value: 'birmingham', label: 'Birmingham' },
-    { value: 'bristol', label: 'Bristol' }
-];
+import { CITIES } from '../cities';
 
 export class MenuScene extends Scene {
     constructor() {
@@ -195,11 +187,11 @@ export class MenuScene extends Scene {
                 <div id="city-picker">
                     <button id="city-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">Choose a city</button>
                     <div id="city-picker-options" role="listbox" aria-label="Choose a city">
-                        ${STATIC_CITIES.map(({ value, label }) => `<button type="button" role="option" data-city="${value}" aria-selected="false">${label}</button>`).join('')}
+                        ${CITIES.map(({ value, label }) => `<button type="button" role="option" data-city="${value}" aria-selected="false">${label}</button>`).join('')}
                     </div>
                 </div>
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
-                    <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
+                    <span id="start-link" style="display: inline-block; width: fit-content; line-height: 1; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
                 </div>
                 <div id="postcode-error" style="min-height: 18px; color: #ffe3e3; font-size: 14px; text-align: center; max-width: 300px; font-weight: 700;"> </div>
             </div>
@@ -232,7 +224,7 @@ export class MenuScene extends Scene {
                 }
 
                 errorText.textContent = '';
-                this.scene.start('Game');
+                this.scene.start('Game', { city: selectedCity });
                 return;
             }
 
