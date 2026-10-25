@@ -102,7 +102,7 @@ export class MenuScene extends Scene {
 
         const title = this.add.text(cx, DS_TOP_SCREEN.y + 66, 'A Dog In Your Neighbourhood', {
             fontFamily: 'PixelFont',
-            fontSize: '28px',
+            fontSize: '34px',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 6,
@@ -114,7 +114,9 @@ export class MenuScene extends Scene {
         const lastOWidth = titleContext.measureText('o').width;
         pigeon.setPosition(
             title.x - title.width / 2 + prefixWidth + lastOWidth / 2,
-            title.y - title.height / 2 + 8
+            title.y - title.height / 2
+                - (1 - pigeon.originY) * pigeon.displayHeight
+                + 16
         );
 
         const form = this.add.dom(cx, DS_TOP_SCREEN.y + DS_TOP_SCREEN.height * 0.82 + 8).createFromHTML(`
@@ -125,7 +127,7 @@ export class MenuScene extends Scene {
                         opacity: 1;
                     }
                 </style>
-                <input type="text" placeholder="Please type your postcode here" value="" style="width: 310px; height: 48px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; text-transform: uppercase; padding: 0 12px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
+                <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
                     <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
                 </div>
