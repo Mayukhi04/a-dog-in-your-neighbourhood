@@ -69,6 +69,11 @@ export class Game extends Scene
             frameHeight: 32
         });
 
+        this.load.spritesheet('birdflyleft', 'pigeon_fiy-SheetLeft.png',{
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
         this.load.json('roadMaze', '../road_maze.json');
 
         this.load.image('meat', 'meat.png');
@@ -492,10 +497,21 @@ export class Game extends Scene
                     frameRate: 5,
                     repeat: -1
                 });
+
+                this.anims.create({
+                    key: 'flyingLeft',
+                    frames: this.anims.generateFrameNumbers('birdflyleft', { start: 0, end: 6 }),
+                    frameRate: 5,
+                    repeat: -1
+
+                });
+
+
             }
 
+    
+
             this.birdfly.setVisible(true);
-            this.birdfly.play('flying');
             this.gameOverBirdLaunched = true;
 
         }
@@ -508,6 +524,12 @@ export class Game extends Scene
             const dy = targetY - this.birdfly.y;
             const distance = Math.hypot(dx, dy);
             const step = Math.min(100 * delta / 1000, distance);
+
+            if (dx < 0) {
+                this.birdfly.play('flyingLeft', true);
+            } else {
+                this.birdfly.play('flying', true);
+            }
 
             if (distance > 0) {
                 this.birdfly.x += (dx / distance) * step;
