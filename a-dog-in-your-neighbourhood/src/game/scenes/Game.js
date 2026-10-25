@@ -24,6 +24,16 @@ export class Game extends Scene
     score = 0;
     meatHasSpawned = false;
     meatCollectedCount = 0;
+    postman;
+    postmanCrossingStarted = false;
+    postmanFollowTriggered = false;
+    postmanFollowDistance = 0;
+    postmanFollowMaxDistance = 400;
+    postmanFollowLastPosition = null;
+    postmanLastDetectionPosition = null;
+    postmanFollowTarget = null;
+    postmanDirectionX = 1;
+    postmanDirectionY = 0;
     cat;
     catSpeed = 145;
     catRunDirection = 'right';
@@ -85,6 +95,16 @@ export class Game extends Scene
         this.isTransitioning = false;
         this.score = 0;
         this.meatCollectedCount = 0;
+        this.postman = null;
+        this.postmanCrossingStarted = false;
+        this.postmanFollowTriggered = false;
+        this.postmanFollowDistance = 0;
+        this.postmanFollowMaxDistance = 400;
+        this.postmanFollowLastPosition = null;
+        this.postmanLastDetectionPosition = null;
+        this.postmanFollowTarget = null;
+        this.postmanDirectionX = 1;
+        this.postmanDirectionY = 0;
         this.cat = null;
         this.catRunDirection = 'right';
         this.catCarrying = false;
@@ -119,6 +139,8 @@ export class Game extends Scene
         
         this.load.image('overlay', 'ds_bottom.jpeg');
         this.load.image('field', 'red_flower.jpg')
+        this.load.image('postman', 'postman.png');
+
 
         this.load.spritesheet('dog', 'dog.png', {
             frameWidth: 32,
@@ -425,6 +447,12 @@ export class Game extends Scene
         }
         
 
+        this.postman = this.add.sprite(10,50,'postman');
+        this.postman.setScale(0.07);
+        this.postman.setVisible(false);
+        gameContainer.add(this.postman);
+
+
         this.meat = this.add.sprite(spawnX, spawnY, 'meat');
         this.meat.setScale(0.08);
         gameContainer.add(this.meat);
@@ -679,6 +707,7 @@ export class Game extends Scene
                     this.catTarget = null;
                     this.catStationaryTime = 0;
                     this.meatCollectedCount += 1;
+                    this.addScore();
                     this.timerVal += 5;
                     this.timerFlashUntil = time + 500;
                     this.timerFlashSuffix = '+';
@@ -857,6 +886,8 @@ export class Game extends Scene
             }
         }
 
+        
+
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
 
         if (time >= this.nextYipTime && !isCurrentlyLayingDown) {
@@ -870,6 +901,47 @@ export class Game extends Scene
 
         if (!this.cursors || !this.puppy) return;
         if (this.dogCaught) return;
+
+        if (this.postman?.visible && !this.postmanFollowTriggered) {
+            const previousPosition = this.postmanLastDetectionPosition || {
+                x: this.postman.x,
+                y: this.postman.y
+            };
+            const passDistance = this.getClosestPointOnSegment(
+                this.puppy.x,
+                this.puppy.y,
+                previousPosition.x,
+                previousPosition.y,
+                this.postman.x,
+                this.postman.y
+            ).distance;
+
+            this.postmanLastDetectionPosition = { x: this.postman.x, y: this.postman.y };
+
+            if (passDistance <= 100) {
+                this.postmanFollowTriggered = true;
+                this.postmanFollowDistance = 0;
+                this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
+                this.updatePostmanFollowTarget();
+            }
+        }
+
+        if (
+            this.postmanFollowTriggered &&
+            this.postmanFollowDistance < this.postmanFollowMaxDistance &&
+            this.postman?.visible
+        ) {
+            const { x, y } = this.postmanFollowLastPosition;
+            this.postmanFollowDistance += Math.hypot(this.postman.x - x, this.postman.y - y);
+            this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
+            if (this.postman?.visible) {
+                this.updatePostmanFollowTarget();
+            }
+            if (this.postmanFollowDistance < this.postmanFollowMaxDistance) {
+                this.followPostman(delta);
+                return;
+            }
+        }
 
         const dpadState = this.getDPadState();
 
@@ -993,6 +1065,7 @@ export class Game extends Scene
 
             if (!collectedRottenMeat) {
                 this.meatCollectedCount += 1;
+                this.addScore();
             }
 
             this.timerVal = collectedRottenMeat
@@ -1001,10 +1074,218 @@ export class Game extends Scene
             this.timerFlashUntil = time + 500;
             this.timerFlashSuffix = collectedRottenMeat ? '-' : '+';
             this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
-            this.score++;
-            this.scoreText.setText(`Score: ${this.score}`);
             this.spawnMeat();
         }
+    }
+
+    followPostman(delta) {
+        if (!this.puppy || !this.postmanFollowTarget) {
+            return;
+        }
+
+        const step = 220 * delta / 1000;
+        let bestMove = null;
+        let smallestRemainingDistance = Infinity;
+
+        for (const segment of this.roadSegments) {
+            const currentPoint = this.getClosestPointOnSegment(
+                this.puppy.x,
+                this.puppy.y,
+                segment.x1,
+                segment.y1,
+                segment.x2,
+                segment.y2
+            );
+            if (currentPoint.distance > this.roadWidthThreshold) {
+                continue;
+            }
+
+            const targetPoint = this.getClosestPointOnSegment(
+                this.postmanFollowTarget.x,
+                this.postmanFollowTarget.y,
+                segment.x1,
+                segment.y1,
+                segment.x2,
+                segment.y2
+            );
+            const dx = targetPoint.x - currentPoint.x;
+            const dy = targetPoint.y - currentPoint.y;
+            const distance = Math.hypot(dx, dy);
+            const moveDistance = Math.min(step, distance);
+            const x = distance === 0
+                ? currentPoint.x
+                : currentPoint.x + dx / distance * moveDistance;
+            const y = distance === 0
+                ? currentPoint.y
+                : currentPoint.y + dy / distance * moveDistance;
+            const remainingDistance = Math.hypot(
+                this.postmanFollowTarget.x - x,
+                this.postmanFollowTarget.y - y
+            );
+
+            if (remainingDistance < smallestRemainingDistance) {
+                smallestRemainingDistance = remainingDistance;
+                bestMove = { x, y, dx, dy };
+            }
+        }
+
+        if (!bestMove) {
+            return;
+        }
+
+        this.puppy.setPosition(bestMove.x, bestMove.y);
+        const anim = Math.abs(bestMove.dx) >= Math.abs(bestMove.dy)
+            ? (bestMove.dx < 0 ? 'walk-left' : 'walk-right')
+            : (bestMove.dy < 0 ? 'walk-up' : 'walk-down');
+        if (this.anims.exists(anim)) {
+            this.puppy.play(anim, true);
+            this.lastAnim = anim;
+            if (anim === 'walk-left' || anim === 'walk-right') {
+                this.lastHorizontalDir = anim === 'walk-left' ? 'left' : 'right';
+            }
+        }
+    }
+
+    updatePostmanFollowTarget() {
+        this.postmanFollowTarget = {
+            x: this.postman.x - this.postmanDirectionX * 20,
+            y: this.postman.y - this.postmanDirectionY * 20
+        };
+    }
+
+    addScore() {
+        this.score++;
+        this.scoreText.setText(`Score: ${this.score}`);
+        if (this.score >= 4) {
+            this.startPostmanCrossing();
+        }
+    }
+
+    startPostmanCrossing() {
+        if (this.postmanCrossingStarted || !this.postman || !this.gameContainer) {
+            return;
+        }
+
+        const route = this.getPostmanRoute();
+        if (route.length === 0) {
+            console.warn('Could not find a connected road route for the postman.');
+            return;
+        }
+
+        this.postmanCrossingStarted = true;
+        this.postman.setPosition(route[0].x, route[0].y);
+        this.postmanLastDetectionPosition = { x: route[0].x, y: route[0].y };
+        this.postman.setVisible(true);
+        this.movePostmanAlongRoute(route, 1);
+    }
+
+    getPostmanRoute() {
+        const points = new Map();
+        const connections = new Map();
+        const pointKey = (x, y) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
+
+        for (const segment of this.roadSegments) {
+            const startKey = pointKey(segment.x1, segment.y1);
+            const endKey = pointKey(segment.x2, segment.y2);
+            points.set(startKey, { x: segment.x1, y: segment.y1 });
+            points.set(endKey, { x: segment.x2, y: segment.y2 });
+
+            if (!connections.has(startKey)) {
+                connections.set(startKey, []);
+            }
+            if (!connections.has(endKey)) {
+                connections.set(endKey, []);
+            }
+            connections.get(startKey).push(endKey);
+            connections.get(endKey).push(startKey);
+        }
+
+        if (points.size === 0) {
+            return [];
+        }
+
+        const leftmostX = Math.min(...[...points.values()].map(point => point.x));
+        const startKeys = [...points.entries()]
+            .filter(([, point]) => point.x === leftmostX)
+            .map(([key]) => key);
+
+        let bestRoute = [];
+        for (const startKey of startKeys) {
+            const queue = [startKey];
+            const previous = new Map([[startKey, null]]);
+            let furthestKey = startKey;
+
+            for (let index = 0; index < queue.length; index++) {
+                const currentKey = queue[index];
+                if (points.get(currentKey).x > points.get(furthestKey).x) {
+                    furthestKey = currentKey;
+                }
+
+                for (const nextKey of connections.get(currentKey)) {
+                    if (!previous.has(nextKey)) {
+                        previous.set(nextKey, currentKey);
+                        queue.push(nextKey);
+                    }
+                }
+            }
+
+            const route = [];
+            for (let key = furthestKey; key !== null; key = previous.get(key)) {
+                route.unshift(points.get(key));
+            }
+
+            if (
+                route.length > 0 &&
+                (bestRoute.length === 0 || route[route.length - 1].x > bestRoute[bestRoute.length - 1].x)
+            ) {
+                bestRoute = route;
+            }
+        }
+
+        return bestRoute;
+    }
+
+    movePostmanAlongRoute(route, index) {
+        if (!this.postman) {
+            return;
+        }
+
+        const destination = index < route.length
+            ? route[index]
+            : {
+                x: this.gameFieldWidth / 2 + this.postman.displayWidth / 2,
+                y: this.postman.y
+            };
+        const distance = Math.hypot(destination.x - this.postman.x, destination.y - this.postman.y);
+
+        if (distance < 0.1) {
+            if (index < route.length) {
+                this.movePostmanAlongRoute(route, index + 1);
+            } else {
+                this.postman.destroy();
+                this.postman = null;
+            }
+            return;
+        }
+
+        this.postmanDirectionX = (destination.x - this.postman.x) / distance;
+        this.postmanDirectionY = (destination.y - this.postman.y) / distance;
+
+        this.tweens.add({
+            targets: this.postman,
+            x: destination.x,
+            y: destination.y,
+            duration: distance / 200 * 1000,
+            ease: 'Linear',
+            onComplete: () => {
+                if (index < route.length) {
+                    this.movePostmanAlongRoute(route, index + 1);
+                } else {
+                    this.postman?.destroy();
+                    this.postman = null;
+                }
+            }
+        });
     }
 
     // projection helper to map player point onto vector line segment
