@@ -16,37 +16,44 @@ function parsePostcodeCsvFile(contents) {
 }
 
 async function loadRandomPostcodes() {
+    const baseUrl = new URL(import.meta.env.BASE_URL || '/', window.location.href);
+    const postcodeDirectory = new URL('postcodes/', baseUrl);
+    const manifestUrl = new URL('postcodes/index.json', baseUrl);
+
     try {
-        const postcodeModules = {
-            ...import.meta.glob('/public/postcodes/*.csv', { query: '?raw', import: 'default' }),
-            ...import.meta.glob('/postcodes/*.csv', { query: '?raw', import: 'default' })
-        };
+        const manifestResponse = await fetch(manifestUrl);
+        if (manifestResponse.ok) {
+            const fileNames = await manifestResponse.json();
+            if (Array.isArray(fileNames) && fileNames.length > 0) {
+                const datasets = await Promise.all(
+                    fileNames.map(async (fileName) => {
+                        try {
+                            const csvUrl = new URL(fileName, postcodeDirectory);
+                            const response = await fetch(csvUrl);
+                            if (!response.ok) {
+                                return [];
+                            }
+                            const contents = await response.text();
+                            return parsePostcodeCsvFile(contents);
+                        } catch (error) {
+                            console.warn('Failed to load postcode CSV', error);
+                            return [];
+                        }
+                    })
+                );
 
-        const datasets = await Promise.all(
-            Object.entries(postcodeModules).map(async ([, loader]) => {
-                try {
-                    const contents = await loader();
-                    if (typeof contents !== 'string') {
-                        return [];
-                    }
-                    return parsePostcodeCsvFile(contents);
-                } catch (error) {
-                    console.warn('Failed to load postcode CSV', error);
-                    return [];
+                const values = [...new Set(datasets.flat())].filter(Boolean);
+                if (values.length > 0) {
+                    return values;
                 }
-            })
-        );
-
-        const values = [...new Set(datasets.flat())].filter(Boolean);
-        if (values.length > 0) {
-            return values;
+            }
         }
     } catch (error) {
         console.warn('postcode catalogue lookup failed', error);
     }
 
     try {
-        const response = await fetch('/postcodes/ab.csv');
+        const response = await fetch(new URL('postcodes/ab.csv', postcodeDirectory));
         if (!response.ok) return [];
         const contents = await response.text();
         return [...new Set(parsePostcodeCsvFile(contents))].filter(Boolean);
@@ -66,6 +73,7 @@ export class MenuScene extends Scene {
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('menuField', 'field.jpeg');
         this.load.audio('click', 'audio/click.mp3');
+        this.load.audio('dice_roll', 'audio/dice_roll.mp3');
         this.load.audio('slow_song', 'audio/slow_song.mp3');
 
         this.load.spritesheet('menuDog', 'dog.png', {
@@ -80,6 +88,7 @@ export class MenuScene extends Scene {
 
     async create() {
         const clickSfx = this.sound.add('click', { volume: 0.5 });
+        const diceRollSfx = this.sound.add('dice_roll', { volume: 0.7 });
         this.slowSong = this.sound.add('slow_song', {
             volume: 0.55,
             loop: true
@@ -342,7 +351,10 @@ export class MenuScene extends Scene {
             }
         };
 
-        randomPostcodeButton.addEventListener('click', () => {
+        randomPostcodeButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            diceRollSfx.play();
+
             if (postcodeCatalogue.length === 0) {
                 errorText.textContent = 'No postcode data found.';
                 return;
