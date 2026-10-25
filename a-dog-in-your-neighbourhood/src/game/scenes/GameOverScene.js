@@ -47,13 +47,26 @@ export class GameOverScene extends Scene {
         }).setOrigin(0.5);
 
         const playAgainButton = this.add.dom(cx, cy).createFromHTML(`
-            <button type="button" style="width: 170px; height: 52px; border: 3px solid #ffffff; border-radius: 12px; background: rgba(45, 156, 219, 0.9); color: #ffffff; font-size: 22px; font-weight: bold; cursor: pointer; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
+            <button type="button" style="border: 0; padding: 0; background: transparent; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
         `);
         playAgainButton.setOrigin(0.5);
         playAgainButton.setDepth(10);
 
-        playAgainButton.node.addEventListener('click', () => {
+        const playAgainLink = playAgainButton.node.querySelector('button');
+        playAgainLink.addEventListener('click', () => {
             this.scene.start('MenuScene');
+        });
+        this.input.keyboard.disableGlobalCapture(); // Allows keys to function normally
+        this.input.keyboard.on('keydown-ENTER', () => {
+            this.scene.start('MenuScene');
+        });
+        playAgainLink.addEventListener('mouseenter', () => {
+            playAgainLink.style.color = '#ffffff';
+            playAgainLink.style.opacity = '1';
+        });
+        playAgainLink.addEventListener('mouseleave', () => {
+            playAgainLink.style.color = 'rgba(255,255,255,0.8)';
+            playAgainLink.style.opacity = '0.9';
         });
     }
 }
