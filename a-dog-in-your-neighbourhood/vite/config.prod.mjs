@@ -1,5 +1,12 @@
 import { defineConfig } from 'vite';
 
+const isGitHubPagesBuild = process.env.VITE_GITHUB_PAGES === 'true';
+const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1];
+
+if (isGitHubPagesBuild && !repositoryName) {
+    throw new Error('GITHUB_REPOSITORY must be set for GitHub Pages builds.');
+}
+
 const phasermsg = () => {
     return {
         name: 'phasermsg',
@@ -17,7 +24,7 @@ const phasermsg = () => {
 }   
 
 export default defineConfig({
-    base: './',
+    base: isGitHubPagesBuild ? `/${repositoryName}/` : './',
     logLevel: 'warn',
     build: {
         rollupOptions: {
