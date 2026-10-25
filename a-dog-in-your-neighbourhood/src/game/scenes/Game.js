@@ -17,7 +17,7 @@ export class Game extends Scene
 
     score = 0;
   
-    timerVal = 5;
+    timerVal = 30;
     timerPassed = 0;
     timer;
     gameContainer;
@@ -447,6 +447,10 @@ export class Game extends Scene
 
         if (this.timerVal <= 0 && !this.isTransitioning) {
             this.isTransitioning = true;
+
+            this.input.keyboard.clearCaptures();
+            this.input.keyboard.removeAllListeners();
+
             this.scene.start('GameOverScene');
         }
 
