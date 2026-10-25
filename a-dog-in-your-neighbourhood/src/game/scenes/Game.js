@@ -183,7 +183,7 @@ export class Game extends Scene
         });
 
         this.hawkSFX = this.sound.add('hawk', {
-            volume: 5,
+            volume: 1,
             loop: false
         });
 
@@ -198,11 +198,11 @@ export class Game extends Scene
         });
 
         this.meowSFX = this.sound.add('meow', {
-            volume: 0.3,
+            volume: 0.2,
             loop: false
         });
         this.purrSFX = this.sound.add('purr', {
-            volume: 1.5,
+            volume: 1.3,
             loop: true
         });
 
