@@ -65,6 +65,7 @@ export class Game extends Scene
     dpadScale = 1;
     dpadButtons = {};
     dpadPositions = {};
+    letterButtonOverlays = {};
     dpadPointerState = {
         up: false,
         left: false,
@@ -128,6 +129,7 @@ export class Game extends Scene
         this.dpadScale = 1;
         this.dpadButtons = {};
         this.dpadPositions = {};
+        this.letterButtonOverlays = {};
         this.dpadPointerState = {
             up: false,
             left: false,
@@ -555,7 +557,7 @@ export class Game extends Scene
                 0.9
             );
 
-            button.setStrokeStyle(3 * overlayScale, 0x0d0f12, 1);
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
             button.setDepth(10);
             button.setScrollFactor(0);
             button.setInteractive({ useHandCursor: true });
@@ -578,7 +580,72 @@ export class Game extends Scene
             this.dpadButtons[direction] = button;
         });
 
+        const letterButtons = {
+            X: { x: 875, y: 175 },
+            Y: { x: 818, y: 233 },
+            A: { x: 932, y: 233 },
+            B: { x: 875, y: 291 }
+        };
+
+        Object.entries(letterButtons).forEach(([letter, position]) => {
+            const x = toCanvasX(position.x);
+            const y = toCanvasY(position.y);
+            const button = this.add.circle(
+                x,
+                y,
+                26 * overlayScale,
+                defaultColour,
+                0.72
+            );
+
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
+            button.setDepth(10);
+            button.setScrollFactor(0);
+            button.setInteractive({ useHandCursor: true });
+
+            let isPressed = false;
+            const setPressedState = (pressed) => {
+                isPressed = pressed;
+                button.setFillStyle(pressed ? 0x4a4e55 : defaultColour, pressed ? 0.9 : 0.72);
+                button.setPosition(x, y + (pressed ? 2 * overlayScale : 0));
+            };
+
+            button.on('pointerdown', () => setPressedState(true));
+            button.on('pointerup', () => {
+                if (!isPressed) {
+                    return;
+                }
+
+                setPressedState(false);
+                this.handleLetterButtonPress(letter);
+            });
+            button.on('pointerout', () => setPressedState(false));
+            button.on('pointerupoutside', () => setPressedState(false));
+
+            this.letterButtonOverlays[letter] = button;
+        });
+
         this.updateDPadVisualState();
+    }
+
+    handleLetterButtonPress (letter)
+    {
+        switch (letter) {
+            case 'A':
+                // TODO: Add the A button action.
+                break;
+            case 'B':
+                // TODO: Add the B button action.
+                break;
+            case 'X':
+                // TODO: Add the X button action.
+                break;
+            case 'Y':
+                // TODO: Add the Y button action.
+                break;
+            default:
+                console.warn(`Unknown DS button: ${letter}`);
+        }
     }
 
     getDPadState ()
@@ -608,11 +675,11 @@ export class Game extends Scene
             const button = this.dpadButtons[direction];
             const active = state[direction];
 
-            button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
-            button.setStrokeStyle(3 * this.dpadScale, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setFillStyle(active ? 0x4a4e55 : 0x2f3135, active ? 0.9 : 0.72);
+            button.setStrokeStyle(2 * this.dpadScale, 0x090a0d, 0.9);
             button.setPosition(
                 this.dpadPositions[direction].x,
-                this.dpadPositions[direction].y + (active ? 4 * this.dpadScale : 0)
+                this.dpadPositions[direction].y + (active ? 2 * this.dpadScale : 0)
             );
         }
 
