@@ -17,7 +17,7 @@ export class Game extends Scene
 
     score = 0;
   
-    timerVal = 30;
+    timerVal = 5;
     timerPassed = 0;
     timer;
     gameContainer;

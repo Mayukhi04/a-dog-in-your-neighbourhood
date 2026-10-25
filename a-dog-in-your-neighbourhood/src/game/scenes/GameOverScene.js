@@ -8,10 +8,11 @@ export class GameOverScene extends Scene {
     preload() {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds.jpeg');
-        this.load.image('menuField', 'field.jpeg');
+        this.load.image('nightField', 'night_field.jpg');
     }
 
     create() {
+        // ds overlay
         const screenW = this.cameras.main.width;
         const screenH = this.cameras.main.height;
         const cx = this.cameras.main.centerX;
@@ -28,12 +29,14 @@ export class GameOverScene extends Scene {
         dsBg.setDisplaySize(screenW, bgHeight);
         bgContainer.add(dsBg);
 
-        const fieldBg = this.add.image(0, bgHeight * 0.243, 'menuField');
+        // background + dog
+        const fieldBg = this.add.image(0, bgHeight * 0.243, 'nightField');
         fieldBg.setDisplaySize(screenW * 0.5, bgHeight * 0.375);
         fieldBg.setOrigin(0.5);
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
+        // menu text/play again button
         this.add.text(cx, cy - 120, 'Game Over!', {
             fontFamily: 'PixelFont',
             fontSize: '36px',
