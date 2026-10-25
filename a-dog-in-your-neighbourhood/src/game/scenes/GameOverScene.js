@@ -10,9 +10,11 @@ export class GameOverScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('nightField', 'night_field.jpg');
+        this.load.audio('click', 'audio/click.mp3');
     }
 
     create(data = {}) {
+        const clickSfx = this.sound.add('click', { volume: 0.5 });
         // ds overlay
         const cx = DESIGN_WIDTH / 2;
 
@@ -62,6 +64,7 @@ export class GameOverScene extends Scene {
 
         const playAgainLink = playAgainButton.node.querySelector('button');
         playAgainLink.addEventListener('click', () => {
+            clickSfx.play();
             this.scene.start('MenuScene');
         });
         this.input.keyboard.disableGlobalCapture(); // Allows keys to function normally
