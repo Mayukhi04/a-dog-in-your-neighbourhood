@@ -53,7 +53,7 @@ export class MenuScene extends Scene {
             });
         }
 
-        const pigeon = this.add.sprite(cx + screenW * 0.105, bgHeight * 0.17, 'menuPigeon');
+        const pigeon = this.add.sprite(cx + screenW * 0.105, cy - bgHeight * 0.085, 'menuPigeon');
         pigeon.setScale(1);
         pigeon.setFlipX(true);
         pigeon.setOrigin(1, 0.8);
