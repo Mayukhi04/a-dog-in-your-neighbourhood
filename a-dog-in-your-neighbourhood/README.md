@@ -27,6 +27,20 @@ This template has been updated for:
 | `npm run dev-nolog` | Launch a development web server without sending anonymous data (see "About log.js" below) |
 | `npm run build-nolog` | Create a production build in the `dist` folder without sending anonymous data (see "About log.js" below) |
 
+## Map Generation Setup
+
+Generating a map requires Python packages and the Open Roads GeoPackage, in addition to the Node.js dependencies.
+
+From the repository root, install the Python packages:
+
+```bash
+python -m pip install -r processing/requirements.txt
+```
+
+Download the Open Roads GeoPackage from [OS Data Hub](https://osdatahub.os.uk/data/downloads/open/OpenRoads), then place or rename it to `processing/oproad_gb.gpkg`. This large data file is intentionally not included in the repository.
+
+On Windows PowerShell, use `py -m pip install -r processing/requirements.txt` if `python` is not available. Then run the backend and Vite development server as described above.
+
 
 ## Writing Code
 

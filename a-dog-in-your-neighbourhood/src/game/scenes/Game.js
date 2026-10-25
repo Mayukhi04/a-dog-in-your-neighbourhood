@@ -4,6 +4,7 @@ export class Game extends Scene
 {
     cursors;
     puppy;
+    bird;
 
     moveSpeed = 3;
     lastAnim = 'walk-up';
@@ -19,8 +20,12 @@ export class Game extends Scene
     timerVal = 30;
     timerPassed = 0;
     timer;
+    gameContainer;
+    gameOverBirdLaunched = false;
   
     roadSegments = [];
+    reachableRoadSegments = [];
+    roadWidthThreshold = 16;
 
     bgMusic;
 
@@ -47,6 +52,16 @@ export class Game extends Scene
         this.load.image('field', 'red_flower.jpg')
 
         this.load.spritesheet('dog', 'dog.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('bird', 'pigeon_eat-Sheet.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('birdfly', 'pigeon_fiy-Sheet.png', {
             frameWidth: 32,
             frameHeight: 32
         });
@@ -117,6 +132,7 @@ export class Game extends Scene
         const gameContainer = this.add.container(containerX, containerY);
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
+        this.gameContainer = gameContainer;
 
         const tilesW = gameW - 120;
         const tilesH = gameH - 100;
@@ -130,6 +146,7 @@ export class Game extends Scene
             fontFamily: 'PixelFont',
             fontSize: '80px',
             color: '#ffffff',
+            backgroundColor: '#000000'
         });
 
         // Get the exported road data
@@ -256,6 +273,7 @@ export class Game extends Scene
         this.puppy.setOrigin(0.5, 0.8); 
 
         gameContainer.add(this.puppy);
+        this.reachableRoadSegments = this.getReachableRoadSegments(spawnX, spawnY);
 
         // puppy walking logic
         this.anims.create({
@@ -285,6 +303,27 @@ export class Game extends Scene
             frameRate: 10,
             repeat: -1
         });
+
+        const birdPosition = this.getRandomOffRoadPosition(tilesW, tilesH);
+
+        if (birdPosition) {
+            this.bird = this.add.sprite(birdPosition.x, birdPosition.y, 'bird', 0);
+            this.bird.setScale(1.2);
+            this.bird.setOrigin(1, 0.8);
+            gameContainer.add(this.bird);
+
+            this.anims.create({
+                key: 'sitting',
+                frames: this.anims.generateFrameNumbers('bird', { start: 0, end: 3 }),
+                frameRate: 5,
+                repeat: -1
+            });
+
+            this.bird.play('sitting');
+        } else {
+            console.warn('Could not find an off-road location for the bird.');
+        }
+        
 
         this.meat = this.add.sprite(spawnX, spawnY, 'meat');
         this.meat.setScale(0.08);
@@ -412,6 +451,7 @@ export class Game extends Scene
         }
 
         if (this.timerVal > 0) {
+            this.gameOverBirdLaunched = false;
             this.timerPassed += delta;
 
             if (this.timerPassed >= 1000) {
@@ -420,6 +460,53 @@ export class Game extends Scene
                 this.timerPassed %= 1000;
                 this.timer.setText(`Timer: ${this.timerVal}`);
             }
+
+            if (this.bird && this.birdfly) {
+                this.bird.setPosition(this.birdfly.x, this.birdfly.y);
+            }
+            this.bird?.setVisible(true);
+            this.birdfly?.setVisible(false);
+        }
+
+        if (this.timerVal === 0 && !this.gameOverBirdLaunched && this.bird && this.gameContainer) {
+            const { x, y } = this.bird;
+            this.bird.setVisible(false);
+
+            if (!this.birdfly) {
+                this.birdfly = this.add.sprite(x, y, 'birdfly', 0);
+                this.birdfly.setScale(1.2);
+                this.birdfly.setOrigin(1, 0.8);
+                this.gameContainer.add(this.birdfly);
+
+                this.anims.create({
+                    key: 'flying',
+                    frames: this.anims.generateFrameNumbers('birdfly', { start: 0, end: 6 }),
+                    frameRate: 5,
+                    repeat: -1
+                });
+            }
+
+            this.birdfly.setVisible(true);
+            this.birdfly.play('flying');
+            this.gameOverBirdLaunched = true;
+
+        }
+
+            //this.puppy.x and this.puppy.y
+        if (this.timerVal === 0 && this.birdfly?.visible && this.puppy) {
+            const targetX = this.puppy.x + 25;
+            const targetY = this.puppy.y - 20;
+            const dx = targetX - this.birdfly.x;
+            const dy = targetY - this.birdfly.y;
+            const distance = Math.hypot(dx, dy);
+            const step = Math.min(100 * delta / 1000, distance);
+
+            if (distance > 0) {
+                this.birdfly.x += (dx / distance) * step;
+                this.birdfly.y += (dy / distance) * step;
+            }
+
+
         }
 
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
@@ -456,6 +543,8 @@ export class Game extends Scene
             currentAnim = 'walk-down';
         }
 
+        
+
         // execute movement and animations
         if (moveX !== 0 || moveY !== 0) 
         {
@@ -475,7 +564,7 @@ export class Game extends Scene
             let closestPoint = null;
             let minDistance = Infinity;
 
-            for (const seg of this.roadSegments) {
+            for (const seg of this.reachableRoadSegments) {
                 const pt = this.getClosestPointOnSegment(targetX, targetY, seg.x1, seg.y1, seg.x2, seg.y2);
                 if (pt.distance < minDistance) {
                     minDistance = pt.distance;
@@ -484,9 +573,7 @@ export class Game extends Scene
             }
 
             // allowed variance thickness
-            const roadWidthThreshold = 16; 
-
-            if (closestPoint && minDistance <= roadWidthThreshold) {
+            if (closestPoint && minDistance <= this.roadWidthThreshold) {
                 this.puppy.x = closestPoint.x;
                 this.puppy.y = closestPoint.y;
 
@@ -596,6 +683,116 @@ export class Game extends Scene
             y: yy,
             distance: Math.sqrt(dx * dx + dy * dy)
         };
+    }
+
+    getReachableRoadSegments(startX, startY) {
+        if (this.roadSegments.length === 0) {
+            return [];
+        }
+
+        let startSegment = this.roadSegments[0];
+        let minDistance = Infinity;
+
+        for (const segment of this.roadSegments) {
+            const point = this.getClosestPointOnSegment(
+                startX,
+                startY,
+                segment.x1,
+                segment.y1,
+                segment.x2,
+                segment.y2
+            );
+
+            if (point.distance < minDistance) {
+                minDistance = point.distance;
+                startSegment = segment;
+            }
+        }
+
+        const thresholdSquared = this.roadWidthThreshold ** 2;
+        const reachable = new Set([startSegment]);
+        const queue = [startSegment];
+
+        while (queue.length > 0) {
+            const current = queue.pop();
+
+            for (const candidate of this.roadSegments) {
+                if (reachable.has(candidate)) {
+                    continue;
+                }
+
+                const endpoints = [
+                    [current.x1, current.y1],
+                    [current.x2, current.y2]
+                ];
+                const candidateEndpoints = [
+                    [candidate.x1, candidate.y1],
+                    [candidate.x2, candidate.y2]
+                ];
+                const connected = endpoints.some(([x, y]) => {
+                    const distanceToCandidate = this.getClosestPointOnSegment(
+                        x,
+                        y,
+                        candidate.x1,
+                        candidate.y1,
+                        candidate.x2,
+                        candidate.y2
+                    ).distance;
+
+                    return distanceToCandidate ** 2 <= thresholdSquared;
+                }) || candidateEndpoints.some(([x, y]) => {
+                    const distanceToCurrent = this.getClosestPointOnSegment(
+                        x,
+                        y,
+                        current.x1,
+                        current.y1,
+                        current.x2,
+                        current.y2
+                    ).distance;
+
+                    return distanceToCurrent ** 2 <= thresholdSquared;
+                });
+
+                if (connected) {
+                    reachable.add(candidate);
+                    queue.push(candidate);
+                }
+            }
+        }
+
+        return [...reachable];
+    }
+
+    getRandomOffRoadPosition(fieldWidth, fieldHeight) {
+        const padding = 40;
+        const safeDistance = this.roadWidthThreshold + padding;
+        const minX = -fieldWidth / 2 + padding;
+        const maxX = fieldWidth / 2 - padding;
+        const minY = -fieldHeight / 2 + padding;
+        const maxY = fieldHeight / 2 - padding;
+
+        for (let attempt = 0; attempt < 500; attempt++) {
+            const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
+            const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
+            const isOffRoad = this.roadSegments.every((segment) => {
+                const point = this.getClosestPointOnSegment(
+                    x,
+                    y,
+                    segment.x1,
+                    segment.y1,
+                    segment.x2,
+                    segment.y2
+                );
+
+                return point.distance > safeDistance;
+            });
+
+            if (isOffRoad) {
+                return { x, y };
+            }
+        }
+
+        return null;
     }
 
     spawnMeat() {
