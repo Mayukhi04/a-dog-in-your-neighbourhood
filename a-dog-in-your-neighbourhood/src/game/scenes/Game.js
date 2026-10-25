@@ -26,6 +26,8 @@ export class Game extends Scene
     catRunDirection = 'right';
     catCarrying = false;
     catHasMeat = false;
+    catTarget = null;
+    catStationaryTime = 0;
   
     timerVal = 30;
     timerPassed = 0;
@@ -81,6 +83,8 @@ export class Game extends Scene
         this.catRunDirection = 'right';
         this.catCarrying = false;
         this.catHasMeat = false;
+        this.catTarget = null;
+        this.catStationaryTime = 0;
         this.timerVal = 30;
         this.timerPassed = 0;
         this.timerFlashUntil = 0;
@@ -136,6 +140,8 @@ export class Game extends Scene
         this.load.audio('yip', 'audio/yip.mp3');
         this.load.audio('snore', 'audio/snore.mp3');
         this.load.audio('hawk', 'audio/hawk.mp3');
+        this.load.audio('meow', 'audio/meow.mp3');
+        this.load.audio('purr', 'audio/purr.mp3');
     }
 
     create ()
@@ -152,6 +158,7 @@ export class Game extends Scene
         this.events.once('shutdown', () => {
             this.bgMusic.stop();
             this.bgMusic.destroy();
+            this.purrSFX?.stop();
         });
 
         this.chompSFX = this.sound.add('chomp_theme', {
@@ -172,6 +179,15 @@ export class Game extends Scene
         this.snoreSFX = this.sound.add('snore', {
             volume: 3,
             loop: false
+        });
+
+        this.meowSFX = this.sound.add('meow', {
+            volume: 0.3,
+            loop: false
+        });
+        this.purrSFX = this.sound.add('purr', {
+            volume: 1.5,
+            loop: true
         });
 
         // ds overlay positioning
@@ -589,6 +605,8 @@ export class Game extends Scene
 
         if (this.cat && this.cat.visible) {
             if (this.catCarrying) {
+                const previousX = this.cat.x;
+                const previousY = this.cat.y;
                 const awayX = this.cat.x - this.puppy.x;
                 const awayY = this.cat.y - this.puppy.y;
                 let moveX = 0;
@@ -628,22 +646,35 @@ export class Game extends Scene
                     this.cat.y = bestPoint.y;
                 }
 
+                if (Math.hypot(this.cat.x - previousX, this.cat.y - previousY) < 0.01) {
+                    this.catStationaryTime += delta;
+                    if (this.catStationaryTime >= 500 && !this.purrSFX.isPlaying) {
+                        this.purrSFX.play();
+                    }
+                } else {
+                    this.catStationaryTime = 0;
+                    this.purrSFX.stop();
+                }
+
                 this.catRunDirection = moveX < 0 ? 'left' : moveX > 0 ? 'right' : moveY < 0 ? 'up' : moveY > 0 ? 'down' : this.catRunDirection;
                 const animKey = this.getCatAnimKeyForVector(moveX, moveY, this.catRunDirection);
                 if (this.cat.anims.currentAnim?.key !== animKey) {
                     this.cat.play(animKey, true);
                 }
 
-                this.meat.setPosition(this.cat.x, this.cat.y);
-                this.meat.setDepth(this.cat.depth + 1);
+                this.catTarget.setPosition(this.cat.x, this.cat.y);
+                this.catTarget.setDepth(this.cat.depth + 1);
 
                 const catDogDistance = Math.hypot(this.puppy.x - this.cat.x, this.puppy.y - this.cat.y);
-                if (catDogDistance < 18) {
+                if (catDogDistance < 32) {
+                    this.purrSFX.stop();
+                    this.meowSFX.play();
                     this.cat.setVisible(false);
                     this.catCarrying = false;
                     this.catHasMeat = false;
-                    this.meat.setVisible(false);
-                    this.meat.setPosition(this.cat.x, this.cat.y);
+                    this.catTarget.setVisible(false);
+                    this.catTarget = null;
+                    this.catStationaryTime = 0;
                     this.meatCollectedCount += 1;
                     this.timerVal += 5;
                     this.timerFlashUntil = time + 500;
@@ -652,14 +683,16 @@ export class Game extends Scene
                     this.spawnMeat();
                 }
             } else {
-                const dx = this.meat.x - this.cat.x;
-                const dy = this.meat.y - this.cat.y;
+                this.catStationaryTime = 0;
+                this.purrSFX.stop();
+                const dx = this.catTarget.x - this.cat.x;
+                const dy = this.catTarget.y - this.cat.y;
                 const distance = Math.hypot(dx, dy);
                 const step = Math.min(this.catSpeed * (delta / 1000), distance);
 
                 if (distance > 0) {
                     this.cat.x += (dx / distance) * step;
-                    this.cat.y = this.meat.y;
+                    this.cat.y += (dy / distance) * step;
                 }
 
                 const animKey = this.getCatAnimKeyForVector(
@@ -674,10 +707,10 @@ export class Game extends Scene
                 if (distance <= 10) {
                     this.catCarrying = true;
                     this.catHasMeat = true;
+                    this.catStationaryTime = 0;
                     this.cat.setVisible(true);
-                    this.meat.setVisible(true);
-                    this.meat.setPosition(this.cat.x, this.cat.y);
-                    this.meat.setDepth(this.cat.depth + 1);
+                    this.catTarget.setPosition(this.cat.x, this.cat.y);
+                    this.catTarget.setDepth(this.cat.depth + 1);
                 }
             }
         }
@@ -1193,17 +1226,23 @@ export class Game extends Scene
             return;
         }
 
+        this.catTarget = this.rottenMeat.visible && Math.random() < 0.5
+            ? this.rottenMeat
+            : this.meat;
+
         const leftBound = -460;
         const rightBound = 460;
-        const nearestSide = Math.abs(this.meat.x - leftBound) <= Math.abs(this.meat.x - rightBound) ? 'left' : 'right';
+        const nearestSide = Math.abs(this.catTarget.x - leftBound) <= Math.abs(this.catTarget.x - rightBound) ? 'left' : 'right';
         const runFrom = nearestSide === 'left' ? 'right' : 'left';
         const spawnOffset = 200;
 
         this.catRunDirection = runFrom;
         this.catCarrying = false;
         this.catHasMeat = false;
-        const startX = runFrom === 'right' ? this.meat.x + spawnOffset : this.meat.x - spawnOffset;
-        const startY = this.meat.y;
+        this.catStationaryTime = 0;
+        this.purrSFX.stop();
+        const startX = runFrom === 'right' ? this.catTarget.x + spawnOffset : this.catTarget.x - spawnOffset;
+        const startY = this.catTarget.y;
 
         this.cat.setPosition(startX, startY);
         this.cat.setVisible(true);
@@ -1219,6 +1258,9 @@ export class Game extends Scene
         this.meatHasSpawned = true;
         this.catCarrying = false;
         this.catHasMeat = false;
+        this.catTarget = null;
+        this.catStationaryTime = 0;
+        this.purrSFX?.stop();
 
         const roadSamples = [];
         for (const segment of walkableSegments) {
