@@ -1,6 +1,15 @@
 import { Scene } from 'phaser';
 import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
 
+// Add each location's image/map asset keys here when the city artwork is ready.
+const STATIC_CITIES = [
+    { value: 'nottingham', label: 'Nottingham' },
+    { value: 'london', label: 'London' },
+    { value: 'manchester', label: 'Manchester' },
+    { value: 'birmingham', label: 'Birmingham' },
+    { value: 'bristol', label: 'Bristol' }
+];
+
 export class MenuScene extends Scene {
     constructor() {
         super('MenuScene');
@@ -128,6 +137,10 @@ export class MenuScene extends Scene {
                     }
                 </style>
                 <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
+                <select id="city-select" aria-label="Choose a city" style="display:none; width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" >
+                    <option value="" selected disabled>Choose a city</option>
+                    ${STATIC_CITIES.map(({ value, label }) => `<option value="${value}">${label}</option>`).join('')}
+                </select>
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
                     <span id="start-link" style="color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
                 </div>
@@ -138,17 +151,26 @@ export class MenuScene extends Scene {
         form.setDepth(10);
 
         const postcodeInput = form.node.querySelector('input');
+        const citySelect = form.node.querySelector('#city-select');
         const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
         const isFixedMapDeployment = import.meta.env.VITE_GITHUB_PAGES === 'true';
 
         if (isFixedMapDeployment) {
-            postcodeInput.hidden = true;
-            errorText.hidden = true;
+            postcodeInput.style.display = 'none';
+            citySelect.style.display = 'block';
+        } else {
+            citySelect.style.display = 'none';
         }
 
         const handleGenerate = async () => {
             if (isFixedMapDeployment) {
+                if (!citySelect.value) {
+                    errorText.textContent = 'Please choose a city.';
+                    return;
+                }
+
+                errorText.textContent = '';
                 this.scene.start('Game');
                 return;
             }
@@ -199,6 +221,9 @@ export class MenuScene extends Scene {
             if (event.key === 'Enter') {
                 handleGenerate();
             }
+        });
+        citySelect.addEventListener('change', () => {
+            errorText.textContent = '';
         });
     }
 }
