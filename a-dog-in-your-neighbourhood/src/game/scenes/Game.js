@@ -30,6 +30,7 @@ export class Game extends Scene
     timerVal = 30;
     timerPassed = 0;
     timer;
+    scoreText;
     timerFlashUntil = 0;
     timerFlashSuffix = '';
     gameContainer;
@@ -222,6 +223,14 @@ export class Game extends Scene
         });
         this.timer.setOrigin(1, 0.5);
 
+        this.scoreText = this.add.text(this.timer.x, this.timer.y + 52, `Score: ${this.score}`, {
+            fontFamily: 'PixelFont',
+            fontSize: '26px',
+            color: '#ffffff',
+            padding: { x: 12, y: 8 }
+        });
+        this.scoreText.setOrigin(1, 0.5);
+
         // Get the exported road data
         const mapData = this.cache.json.get('roadMaze');
 
@@ -340,6 +349,7 @@ export class Game extends Scene
 
         //add text here so it shows on top of roads
         gameContainer.add(this.timer);
+        gameContainer.add(this.scoreText);
         
         this.puppy = this.add.sprite(spawnX, spawnY, 'dog', 16);
         this.puppy.setScale(2);
@@ -793,7 +803,7 @@ export class Game extends Scene
             this.isTransitioning = true;
             this.input.keyboard.clearCaptures();
             this.input.keyboard.removeAllListeners();
-            this.scene.start('GameOverScene');
+            this.scene.start('GameOverScene', { score: this.score });
         }
 
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));
@@ -940,6 +950,8 @@ export class Game extends Scene
             this.timerFlashUntil = time + 500;
             this.timerFlashSuffix = collectedRottenMeat ? '-' : '+';
             this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+            this.score++;
+            this.scoreText.setText(`Score: ${this.score}`);
             this.spawnMeat();
         }
     }
