@@ -13,6 +13,7 @@ export class Game extends Scene
     nextSnoreTime = 0;
 
     score = 0;
+    meatHasSpawned = false;
   
     timerVal = 30;
     timerPassed = 0;
@@ -52,6 +53,7 @@ export class Game extends Scene
         this.load.json('roadMaze', '../road_maze.json');
 
         this.load.image('meat', 'meat.png');
+        this.load.image('rotten_meat', 'rotten_meat.png');
 
         this.load.audio('dog_theme', 'audio/dog_theme.mp3');
         this.load.audio('chomp_theme', 'audio/chomp.mp3');
@@ -286,6 +288,12 @@ export class Game extends Scene
         this.meat = this.add.sprite(spawnX, spawnY, 'meat');
         this.meat.setScale(0.08);
         gameContainer.add(this.meat);
+
+        this.rottenMeat = this.add.sprite(spawnX, spawnY, 'rotten_meat');
+        this.rottenMeat.setScale(0.08);
+        this.rottenMeat.setVisible(false);
+        gameContainer.add(this.rottenMeat);
+        
         this.spawnMeat();
 
         // set up keyboard arrow keys
@@ -529,14 +537,20 @@ export class Game extends Scene
         }
 
         //Control spawning of meat when dog "Collects"
-        const distance = Math.hypot(this.puppy.x-this.meat.x,
+        const meatDistance = Math.hypot(this.puppy.x-this.meat.x,
             this.puppy.y - this.meat.y
         );
+        const rottenMeatDistance = this.rottenMeat.visible
+            ? Math.hypot(this.puppy.x - this.rottenMeat.x, this.puppy.y - this.rottenMeat.y)
+            : Infinity;
 
-        if (distance < 20) {
+        if (meatDistance < 20 || rottenMeatDistance < 20) {
+            const collectedRottenMeat = rottenMeatDistance < meatDistance;
             this.chompSFX.play();
-            this.timerVal = this.timerVal + 5;
-            this.timer.setText(`Timer: ${this.timerVal} +`);
+            this.timerVal = collectedRottenMeat
+                ? Math.max(0, this.timerVal - 5)
+                : this.timerVal + 5;
+            this.timer.setText(`Timer: ${this.timerVal}${collectedRottenMeat ? ' -' : ' +'}`);
             this.spawnMeat();
         }
 
@@ -579,16 +593,24 @@ export class Game extends Scene
     }
 
     spawnMeat() {
-    if (this.roadSegments.length === 0 || !this.meat) return;
+        if (this.roadSegments.length === 0 || !this.meat || !this.rottenMeat) return;
 
-    const segment = this.roadSegments[Math.floor(Math.random() * this.roadSegments.length)]
-    const t = Math.random();
+        const rottenMeatSpawns = this.meatHasSpawned && Math.random() < 0.2;
+        this.meatHasSpawned = true;
 
-    const x = segment.x1 + t * (segment.x2 - segment.x1);
-    const y = segment.y1 + t * (segment.y2 - segment.y1);
+        const placeOnRoad = (item) => {
+            const segment = this.roadSegments[Math.floor(Math.random() * this.roadSegments.length)];
+            const t = Math.random();
+            item.setPosition(
+                segment.x1 + t * (segment.x2 - segment.x1),
+                segment.y1 + t * (segment.y2 - segment.y1)
+            );
+        };
 
-    
-
-    this.meat.setPosition(x, y);
+        placeOnRoad(this.meat);
+        this.rottenMeat.setVisible(rottenMeatSpawns);
+        if (rottenMeatSpawns) {
+            placeOnRoad(this.rottenMeat);
+        }
     }
 }
