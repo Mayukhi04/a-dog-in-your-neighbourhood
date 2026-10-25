@@ -24,6 +24,8 @@ export class Game extends Scene
     cat;
     catSpeed = 145;
     catRunDirection = 'right';
+    catCarrying = false;
+    catHasMeat = false;
   
     timerVal = 30;
     timerPassed = 0;
@@ -76,6 +78,8 @@ export class Game extends Scene
         this.meatCollectedCount = 0;
         this.cat = null;
         this.catRunDirection = 'right';
+        this.catCarrying = false;
+        this.catHasMeat = false;
         this.timerVal = 30;
         this.timerPassed = 0;
         this.timerFlashUntil = 0;
@@ -406,14 +410,28 @@ export class Game extends Scene
 
         this.anims.create({
             key: 'cat-run-right',
-            frames: this.anims.generateFrameNumbers('cat', { start: 13, end: 15 }),
+            frames: this.anims.generateFrameNumbers('cat', { start: 24, end: 26 }),
             frameRate: 8,
             repeat: -1
         });
 
         this.anims.create({
             key: 'cat-run-left',
-            frames: this.anims.generateFrameNumbers('cat', { start: 24, end: 26 }),
+            frames: this.anims.generateFrameNumbers('cat', { start: 13, end: 15 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'cat-run-up',
+            frames: this.anims.generateFrameNumbers('cat', { start: 35, end: 37 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'cat-run-down',
+            frames: this.anims.generateFrameNumbers('cat', { start: 2, end: 4 }),
             frameRate: 8,
             repeat: -1
         });
@@ -527,6 +545,18 @@ export class Game extends Scene
         
     }
 
+    getCatAnimKeyForVector(moveX = 0, moveY = 0, fallback = 'right') {
+        if (Math.abs(moveX) >= Math.abs(moveY)) {
+            if (moveX > 0) return 'cat-run-right';
+            if (moveX < 0) return 'cat-run-left';
+        } else {
+            if (moveY > 0) return 'cat-run-down';
+            if (moveY < 0) return 'cat-run-up';
+        }
+
+        return fallback === 'left' ? 'cat-run-left' : fallback === 'right' ? 'cat-run-right' : fallback === 'up' ? 'cat-run-up' : 'cat-run-down';
+    }
+
     update (time, delta)
     {
         if (this.timerFlashUntil && time > this.timerFlashUntil) {
@@ -542,25 +572,97 @@ export class Game extends Scene
         let currentAnim = null;
 
         if (this.cat && this.cat.visible) {
-            const dx = this.meat.x - this.cat.x;
-            const dy = this.meat.y - this.cat.y;
-            const distance = Math.hypot(dx, dy);
-            const step = Math.min(this.catSpeed * (delta / 1000), distance);
+            if (this.catCarrying) {
+                const awayX = this.cat.x - this.puppy.x;
+                const awayY = this.cat.y - this.puppy.y;
+                let moveX = 0;
+                let moveY = 0;
 
-            if (distance > 0) {
-                this.cat.x += (dx / distance) * step;
-                this.cat.y = this.meat.y;
-            }
+                if (Math.abs(awayX) >= Math.abs(awayY)) {
+                    moveX = awayX >= 0 ? 1 : -1;
+                } else {
+                    moveY = awayY >= 0 ? 1 : -1;
+                }
 
-            const animKey = this.catRunDirection === 'right' ? 'cat-run-right' : 'cat-run-left';
-            if (this.cat.anims.currentAnim?.key !== animKey) {
-                this.cat.play(animKey, true);
-            }
+                const travel = this.catSpeed * (delta / 1000);
+                const desiredX = this.cat.x + moveX * travel;
+                const desiredY = this.cat.y + moveY * travel;
 
-            if (distance <= 10) {
-                this.cat.setVisible(false);
-                this.cat.x = this.meat.x;
-                this.cat.y = this.meat.y;
+                let bestPoint = { x: this.cat.x, y: this.cat.y };
+                let closestDistance = Infinity;
+
+                for (const seg of this.roadSegments) {
+                    const point = this.getClosestPointOnSegment(
+                        desiredX,
+                        desiredY,
+                        seg.x1,
+                        seg.y1,
+                        seg.x2,
+                        seg.y2
+                    );
+
+                    if (point.distance < closestDistance) {
+                        closestDistance = point.distance;
+                        bestPoint = point;
+                    }
+                }
+
+                if (closestDistance <= this.roadWidthThreshold + 8) {
+                    this.cat.x = bestPoint.x;
+                    this.cat.y = bestPoint.y;
+                }
+
+                this.catRunDirection = moveX < 0 ? 'left' : moveX > 0 ? 'right' : moveY < 0 ? 'up' : moveY > 0 ? 'down' : this.catRunDirection;
+                const animKey = this.getCatAnimKeyForVector(moveX, moveY, this.catRunDirection);
+                if (this.cat.anims.currentAnim?.key !== animKey) {
+                    this.cat.play(animKey, true);
+                }
+
+                this.meat.setPosition(this.cat.x, this.cat.y);
+                this.meat.setDepth(this.cat.depth + 1);
+
+                const catDogDistance = Math.hypot(this.puppy.x - this.cat.x, this.puppy.y - this.cat.y);
+                if (catDogDistance < 18) {
+                    this.cat.setVisible(false);
+                    this.catCarrying = false;
+                    this.catHasMeat = false;
+                    this.meat.setVisible(false);
+                    this.meat.setPosition(this.cat.x, this.cat.y);
+                    this.meatCollectedCount += 1;
+                    this.timerVal += 5;
+                    this.timerFlashUntil = time + 500;
+                    this.timerFlashSuffix = '+';
+                    this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+                    this.spawnMeat();
+                }
+            } else {
+                const dx = this.meat.x - this.cat.x;
+                const dy = this.meat.y - this.cat.y;
+                const distance = Math.hypot(dx, dy);
+                const step = Math.min(this.catSpeed * (delta / 1000), distance);
+
+                if (distance > 0) {
+                    this.cat.x += (dx / distance) * step;
+                    this.cat.y = this.meat.y;
+                }
+
+                const animKey = this.getCatAnimKeyForVector(
+                    dx >= 0 ? 1 : -1,
+                    dy >= 0 ? 1 : -1,
+                    this.catRunDirection
+                );
+                if (this.cat.anims.currentAnim?.key !== animKey) {
+                    this.cat.play(animKey, true);
+                }
+
+                if (distance <= 10) {
+                    this.catCarrying = true;
+                    this.catHasMeat = true;
+                    this.cat.setVisible(true);
+                    this.meat.setVisible(true);
+                    this.meat.setPosition(this.cat.x, this.cat.y);
+                    this.meat.setDepth(this.cat.depth + 1);
+                }
             }
         }
 
@@ -1075,13 +1177,15 @@ export class Game extends Scene
         const spawnOffset = 200;
 
         this.catRunDirection = runFrom;
+        this.catCarrying = false;
+        this.catHasMeat = false;
         const startX = runFrom === 'right' ? this.meat.x + spawnOffset : this.meat.x - spawnOffset;
         const startY = this.meat.y;
 
         this.cat.setPosition(startX, startY);
         this.cat.setVisible(true);
         this.cat.setScale(2);
-        this.cat.play(runFrom === 'right' ? 'cat-run-right' : 'cat-run-left', true);
+        this.cat.play(this.getCatAnimKeyForVector(runFrom === 'right' ? 1 : -1, 0, runFrom), true);
     }
 
     spawnMeat() {
@@ -1090,6 +1194,8 @@ export class Game extends Scene
         const walkableSegments = this.getWalkableRoadSegments();
         const rottenMeatSpawns = this.meatHasSpawned && Math.random() < 0.2;
         this.meatHasSpawned = true;
+        this.catCarrying = false;
+        this.catHasMeat = false;
 
         const roadSamples = [];
         for (const segment of walkableSegments) {
@@ -1121,6 +1227,7 @@ export class Game extends Scene
         };
 
         const meatPosition = pickRoadSample();
+        this.meat.setVisible(true);
         this.meat.setPosition(meatPosition.x, meatPosition.y);
         this.cat?.setVisible(false);
 
