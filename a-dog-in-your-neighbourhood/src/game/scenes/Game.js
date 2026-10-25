@@ -24,6 +24,7 @@ export class Game extends Scene
     bones = [];
 
     score = 0;
+    hardMode = false;
     meatHasSpawned = false;
     meatCollectedCount = 0;
     postman;
@@ -62,6 +63,7 @@ export class Game extends Scene
     timerFlashUntil = 0;
     timerFlashSuffix = '';
     gameContainer;
+    hardModeScreenTint;
     pauseScreenFilter;
     pauseIcon;
     gameOverBirdLaunched = false;
@@ -112,6 +114,7 @@ export class Game extends Scene
         this.isTransitioning = false;
         this.bones = [];
         this.score = 0;
+        this.hardMode = false;
         this.meatCollectedCount = 0;
         this.postman = null;
         this.postmanScale = 0.07;
@@ -151,6 +154,7 @@ export class Game extends Scene
         this.connectedRoadSet = new Set();
         this.reachableRoadSegments = [];
         this.gameContainer = null;
+        this.hardModeScreenTint = null;
         this.pauseScreenFilter = null;
         this.pauseIcon = null;
         this.dsOverlay = null;
@@ -227,6 +231,7 @@ export class Game extends Scene
     create (data = {})
     {
         this.resetGameState();
+        this.hardMode = data.hardMode === true;
 
         // load audio and play background music
         this.bgMusic = this.sound.add('dog_theme', {
@@ -301,6 +306,30 @@ export class Game extends Scene
         this.postmanRedFlash.setOrigin(0.5);
         this.postmanRedFlash.setDepth(8);
         this.postmanRedFlash.setVisible(true);
+
+        this.hardModeScreenTint = this.add.rectangle(
+            DS_BOTTOM_SCREEN.x + DS_BOTTOM_SCREEN.width / 2,
+            DS_BOTTOM_SCREEN.y + DS_BOTTOM_SCREEN.height / 2,
+            DS_BOTTOM_SCREEN.width,
+            DS_BOTTOM_SCREEN.height,
+            0xff8c8c,
+            0.12
+        );
+        this.hardModeScreenTint.setDepth(3);
+        this.hardModeScreenTint.setVisible(this.hardMode);
+
+        const hardModeLabel = this.add.text(
+            DS_BOTTOM_SCREEN.x + 8,
+            DS_BOTTOM_SCREEN.y + DS_BOTTOM_SCREEN.height - 8,
+            'HARD MODE',
+            {
+                fontFamily: 'PixelFont',
+                fontSize: '12px',
+                color: '#d64b4b',
+                stroke: '#1b1010',
+                strokeThickness: 2
+            }
+        ).setOrigin(0, 1).setDepth(4).setVisible(this.hardMode);
 
         const gameScale = Math.min(
             DS_BOTTOM_SCREEN.width / gameW,
@@ -1075,7 +1104,10 @@ export class Game extends Scene
                 this.isTransitioning = true;
                 this.input.keyboard.clearCaptures();
                 this.input.keyboard.removeAllListeners();
-                this.scene.start('GameOverScene', { score: this.score });
+                this.scene.start('GameOverScene', {
+                    score: this.score,
+                    hardMode: this.hardMode
+                });
             }
         }
 
@@ -1407,7 +1439,8 @@ export class Game extends Scene
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score >= 5 && Math.random() < 1 / 3) {
+        const postmanChance = this.hardMode ? 2 / 3 : 1 / 3;
+        if (this.score >= 5 && Math.random() < postmanChance) {
             this.startPostmanCrossing();
         }
     }
@@ -1789,11 +1822,13 @@ export class Game extends Scene
     }
 
     triggerCatRun() {
-        if (!this.cat || !this.meat || this.meatCollectedCount < 3 || !this.gameContainer) {
+        const minMeatCollected = this.hardMode ? 2 : 3;
+        if (!this.cat || !this.meat || this.meatCollectedCount < minMeatCollected || !this.gameContainer) {
             return;
         }
 
-        if (Math.random() >= 0.6) {
+        const catChance = this.hardMode ? 0.9 : 0.6;
+        if (Math.random() >= catChance) {
             return;
         }
 
