@@ -134,6 +134,7 @@ export class Game extends Scene
         this.load.audio('chomp_theme', 'audio/chomp.mp3');
         this.load.audio('yip', 'audio/yip.mp3');
         this.load.audio('snore', 'audio/snore.mp3');
+        this.load.audio('hawk', 'audio/hawk.mp3');
     }
 
     create ()
@@ -153,6 +154,11 @@ export class Game extends Scene
         });
 
         this.chompSFX = this.sound.add('chomp_theme', {
+            volume: 5,
+            loop: false
+        });
+
+        this.hawkSFX = this.sound.add('hawk', {
             volume: 5,
             loop: false
         });
@@ -750,13 +756,14 @@ export class Game extends Scene
                 this.puppy.y - this.birdfly.y
             );
 
-            if (birdDistance < 25) {
+            if (birdDistance < 20) {
                 this.dogCaught = true;
                 this.birdEscapeDirection = this.birdfly.x < 0 ? -1 : 1;
                 const halfFieldWidth = this.gameFieldWidth / 2;
                 this.birdEscapeTargetX = this.birdEscapeDirection * (halfFieldWidth + 100);
                 this.puppy.anims.stop();
                 this.puppy.setFrame(this.lastHorizontalDir === 'left' ? 51 : 3);
+                this.hawkSFX.play();
             }
         }
 
