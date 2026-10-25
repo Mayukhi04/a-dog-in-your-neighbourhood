@@ -2,6 +2,60 @@ import { Scene } from 'phaser';
 import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
 import { CITIES } from '../cities';
 
+function parsePostcodeCsvFile(contents) {
+    return (contents || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+            const cleaned = line.replace(/^"|"$/g, '').replace(/""/g, '"');
+            const [postcode] = cleaned.split(',');
+            return postcode ? postcode.replace(/"/g, '').trim() : '';
+        })
+        .filter((postcode) => postcode && postcode.length >= 4);
+}
+
+async function loadRandomPostcodes() {
+    try {
+        const postcodeModules = {
+            ...import.meta.glob('/public/postcodes/*.csv', { query: '?raw', import: 'default' }),
+            ...import.meta.glob('/postcodes/*.csv', { query: '?raw', import: 'default' })
+        };
+
+        const datasets = await Promise.all(
+            Object.entries(postcodeModules).map(async ([, loader]) => {
+                try {
+                    const contents = await loader();
+                    if (typeof contents !== 'string') {
+                        return [];
+                    }
+                    return parsePostcodeCsvFile(contents);
+                } catch (error) {
+                    console.warn('Failed to load postcode CSV', error);
+                    return [];
+                }
+            })
+        );
+
+        const values = [...new Set(datasets.flat())].filter(Boolean);
+        if (values.length > 0) {
+            return values;
+        }
+    } catch (error) {
+        console.warn('postcode catalogue lookup failed', error);
+    }
+
+    try {
+        const response = await fetch('/postcodes/ab.csv');
+        if (!response.ok) return [];
+        const contents = await response.text();
+        return [...new Set(parsePostcodeCsvFile(contents))].filter(Boolean);
+    } catch (error) {
+        console.warn('postcode fallback fetch failed', error);
+        return [];
+    }
+}
+
 export class MenuScene extends Scene {
     constructor() {
         super('MenuScene');
@@ -12,6 +66,7 @@ export class MenuScene extends Scene {
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('menuField', 'field.jpeg');
         this.load.audio('click', 'audio/click.mp3');
+        this.load.audio('slow_song', 'audio/slow_song.mp3');
 
         this.load.spritesheet('menuDog', 'dog.png', {
             frameWidth: 32,
@@ -23,8 +78,20 @@ export class MenuScene extends Scene {
         });
     }
 
-    create() {
+    async create() {
         const clickSfx = this.sound.add('click', { volume: 0.5 });
+        this.slowSong = this.sound.add('slow_song', {
+            volume: 0.55,
+            loop: true
+        });
+        this.slowSong.play();
+
+        this.events.once('shutdown', () => {
+            if (this.slowSong) {
+                this.slowSong.stop();
+                this.slowSong.destroy();
+            }
+        });
         const cx = DESIGN_WIDTH / 2;
         const cy = DESIGN_HEIGHT / 2;
 
@@ -122,6 +189,13 @@ export class MenuScene extends Scene {
                 + 16
         );
 
+        let postcodeCatalogue = [];
+        loadRandomPostcodes().then((values) => {
+            postcodeCatalogue = values || [];
+        }).catch(() => {
+            postcodeCatalogue = [];
+        });
+
         const form = this.add.dom(cx, DS_TOP_SCREEN.y + DS_TOP_SCREEN.height * 0.82 + 8).createFromHTML(`
             <div style="display:flex; flex-direction:column; align-items:center; gap:14px; font-family: 'PixelFont', sans-serif;">
                 <style>
@@ -183,7 +257,10 @@ export class MenuScene extends Scene {
                         outline: none;
                     }
                 </style>
-                <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
+                <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
+                    <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
+                    <button id="random-postcode" type="button" aria-label="Random postcode" title="Random postcode" style="height: 42px; min-width: 42px; width: 42px; padding: 0; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; cursor:pointer; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); line-height: 1; display:flex; align-items:center; justify-content:center; background-image: url('/assets/falling_dice.png'); background-size: 72% 72%; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; image-rendering: crisp-edges; -ms-interpolation-mode: nearest-neighbor; filter: contrast(1.15) saturate(1.1); transform: translateZ(0);"> </button>
+                </div>
                 <div id="city-picker">
                     <button id="city-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">Choose a city</button>
                     <div id="city-picker-options" role="listbox" aria-label="Choose a city">
@@ -203,6 +280,7 @@ export class MenuScene extends Scene {
         const cityPicker = form.node.querySelector('#city-picker');
         const cityPickerTrigger = form.node.querySelector('#city-picker-trigger');
         const cityPickerOptions = form.node.querySelector('#city-picker-options');
+        const randomPostcodeButton = form.node.querySelector('#random-postcode');
         const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
         const isCityPickerMode = import.meta.env.VITE_GITHUB_PAGES === 'true';
@@ -211,8 +289,11 @@ export class MenuScene extends Scene {
 
         if (isCityPickerMode) {
             postcodeInput.style.display = 'none';
+            randomPostcodeButton.style.display = 'none';
             cityPicker.style.display = 'block';
         } else {
+            postcodeInput.style.display = 'block';
+            randomPostcodeButton.style.display = 'inline-flex';
             cityPicker.style.display = 'none';
         }
 
@@ -260,6 +341,22 @@ export class MenuScene extends Scene {
                 errorText.textContent = 'Invalid postcode';
             }
         };
+
+        randomPostcodeButton.addEventListener('click', () => {
+            if (postcodeCatalogue.length === 0) {
+                errorText.textContent = 'No postcode data found.';
+                return;
+            }
+
+            const randomPostcode = postcodeCatalogue[Math.floor(Math.random() * postcodeCatalogue.length)];
+            postcodeInput.value = randomPostcode.toUpperCase();
+            errorText.textContent = '';
+        });
+
+        if (randomPostcodeButton) {
+            randomPostcodeButton.style.opacity = '1';
+            randomPostcodeButton.style.pointerEvents = 'auto';
+        }
 
         submitButton.addEventListener('click', handleGenerate);
         submitButton.addEventListener('mouseenter', () => {

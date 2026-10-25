@@ -11,10 +11,23 @@ export class GameOverScene extends Scene {
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('nightField', 'night_field.jpg');
         this.load.audio('click', 'audio/click.mp3');
+        this.load.audio('slow_song', 'audio/slow_song.mp3');
     }
 
     create(data = {}) {
         const clickSfx = this.sound.add('click', { volume: 0.5 });
+        this.slowSong = this.sound.add('slow_song', {
+            volume: 0.55,
+            loop: true
+        });
+        this.slowSong.play();
+
+        this.events.once('shutdown', () => {
+            if (this.slowSong) {
+                this.slowSong.stop();
+                this.slowSong.destroy();
+            }
+        });
         // ds overlay
         const cx = DESIGN_WIDTH / 2;
 
