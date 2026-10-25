@@ -21,6 +21,7 @@ export class Game extends Scene
     nextSnoreTime = 0;
     meatHasSpawned = false;
     isTransitioning = false;
+    bones = [];
 
     score = 0;
     meatHasSpawned = false;
@@ -94,6 +95,7 @@ export class Game extends Scene
         this.nextSnoreTime = 0;
         this.meatHasSpawned = false;
         this.isTransitioning = false;
+        this.bones = [];
         this.score = 0;
         this.meatCollectedCount = 0;
         this.postman = null;
@@ -172,6 +174,8 @@ export class Game extends Scene
 
         this.load.image('meat', 'meat.png');
         this.load.image('rotten_meat', 'rotten_meat.png');
+        this.load.image('bone', 'bone.png');
+
         this.load.spritesheet('cat', 'cat.png', {
             frameWidth: 32,
             frameHeight: 32,
@@ -1085,6 +1089,20 @@ export class Game extends Scene
             this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
             this.spawnMeat();
         }
+
+        for (const bone of this.bones) {
+            if (!bone.active || Math.hypot(this.puppy.x - bone.x, this.puppy.y - bone.y) >= 20) {
+                continue;
+            }
+
+            this.chompSFX.play();
+            this.timerVal += 2;
+            this.timerFlashUntil = time + 500;
+            this.timerFlashSuffix = '+';
+            this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
+            bone.destroy();
+        }
+        this.bones = this.bones.filter((bone) => bone.active);
     }
 
     followPostman(delta) {
@@ -1603,6 +1621,31 @@ export class Game extends Scene
         this.meat.setVisible(true);
         this.meat.setPosition(meatPosition.x, meatPosition.y);
         this.cat?.setVisible(false);
+
+        if (Math.random() < 1 / 3) {
+            let bonePosition = pickRoadSample();
+            for (let attempt = 0; attempt < 10; attempt++) {
+                const overlapsExistingBone = this.bones.some(
+                    (bone) => Math.hypot(bone.x - bonePosition.x, bone.y - bonePosition.y) < 48
+                );
+                const overlapsMeat = Math.hypot(
+                    meatPosition.x - bonePosition.x,
+                    meatPosition.y - bonePosition.y
+                ) < 48;
+
+                if (!overlapsExistingBone && !overlapsMeat) {
+                    break;
+                }
+                bonePosition = pickRoadSample();
+            }
+
+            const bone = this.add.image(bonePosition.x, bonePosition.y, 'bone');
+            bone.setDisplaySize(36, 17);
+            bone.setAngle(Math.random() * 360);
+            bone.setDepth(4);
+            this.gameContainer.add(bone);
+            this.bones.push(bone);
+        }
 
         this.rottenMeat.setVisible(rottenMeatSpawns);
         if (rottenMeatSpawns) {
