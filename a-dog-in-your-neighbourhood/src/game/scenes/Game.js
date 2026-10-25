@@ -1,5 +1,6 @@
 import { Scene, Actions } from 'phaser';
 import { DS_BOTTOM_SCREEN, DESIGN_WIDTH } from '../layout';
+import { CITIES } from '../cities';
 
 export class Game extends Scene
 {
@@ -141,6 +142,11 @@ export class Game extends Scene
         });
 
         this.load.json('roadMaze', '../road_maze.json');
+        if (import.meta.env.VITE_GITHUB_PAGES === 'true') {
+            for (const city of CITIES) {
+                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json`);
+            }
+        }
 
         this.load.image('meat', 'meat.png');
         this.load.image('rotten_meat', 'rotten_meat.png');
@@ -160,7 +166,7 @@ export class Game extends Scene
         this.load.audio('purr', 'audio/purr.mp3');
     }
 
-    create ()
+    create (data = {})
     {
         this.resetGameState();
 
@@ -259,10 +265,11 @@ export class Game extends Scene
         this.scoreText.setOrigin(1, 0.5);
 
         // Get the exported road data
-        const mapData = this.cache.json.get('roadMaze');
+        const mapKey = data.city ? `cityMap-${data.city}` : 'roadMaze';
+        const mapData = this.cache.json.get(mapKey);
 
         if (!mapData || !mapData.roads) {
-            console.error('Road maze data could not be loaded.');
+            console.error(`Map data could not be loaded for "${data.city ?? 'postcode'}".`);
             return;
         }
 
