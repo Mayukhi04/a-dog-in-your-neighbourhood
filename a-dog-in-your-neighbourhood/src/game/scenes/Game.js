@@ -12,13 +12,18 @@ export class Game extends Scene
     lastMovedTime = 0;
     nextYipTime = 0;
     nextSnoreTime = 0;
+    meatHasSpawned = false;
+    isTransitioning = false;
 
     score = 0;
+<<<<<<< HEAD
     meatHasSpawned = false;
     meatCollectedCount = 0;
     cat;
     catSpeed = 145;
     catRunDirection = 'right';
+=======
+>>>>>>> 6bd8b5696893bfba3f78711a387a4cf8790f5c8e
   
     timerVal = 30;
     timerPassed = 0;
@@ -495,6 +500,7 @@ export class Game extends Scene
         let moveY = 0;
         let currentAnim = null;
 
+<<<<<<< HEAD
         if (this.cat && this.cat.visible) {
             const dx = this.meat.x - this.cat.x;
             const dy = this.meat.y - this.cat.y;
@@ -516,6 +522,15 @@ export class Game extends Scene
                 this.cat.x = this.meat.x;
                 this.cat.y = this.meat.y;
             }
+=======
+        if (this.timerVal <= 0 && !this.isTransitioning) {
+            this.isTransitioning = true;
+
+            this.input.keyboard.clearCaptures();
+            this.input.keyboard.removeAllListeners();
+
+            this.scene.start('GameOverScene');
+>>>>>>> 6bd8b5696893bfba3f78711a387a4cf8790f5c8e
         }
 
         if (this.timerVal > 0) {
