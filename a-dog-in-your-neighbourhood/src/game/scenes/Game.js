@@ -1163,7 +1163,7 @@ export class Game extends Scene
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score >= 4) {
+        if (this.score % 10 == 0) {
             this.startPostmanCrossing();
         }
     }
