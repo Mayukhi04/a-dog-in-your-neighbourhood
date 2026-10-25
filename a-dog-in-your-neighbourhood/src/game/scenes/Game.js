@@ -649,12 +649,16 @@ export class Game extends Scene
         }
 
         if (!this.dogCaught && this.gameOverBirdLaunched && this.birdfly?.visible && this.puppy) {
-            const birdDistance = Math.hypot(
-                this.puppy.x - this.birdfly.x,
-                this.puppy.y - this.birdfly.y
-            );
+            const puppyCenterX = this.puppy.x + (0.5 - this.puppy.originX) * this.puppy.displayWidth;
+            const puppyCenterY = this.puppy.y + (0.5 - this.puppy.originY) * this.puppy.displayHeight;
+            const birdCenterX = this.birdfly.x + (0.5 - this.birdfly.originX) * this.birdfly.displayWidth;
+            const birdCenterY = this.birdfly.y + (0.5 - this.birdfly.originY) * this.birdfly.displayHeight;
+            const overlapsHorizontally = Math.abs(puppyCenterX - birdCenterX)
+                <= (this.puppy.displayWidth + this.birdfly.displayWidth) / 2;
+            const overlapsVertically = Math.abs(puppyCenterY - birdCenterY)
+                <= (this.puppy.displayHeight + this.birdfly.displayHeight) / 2;
 
-            if (birdDistance < 20) {
+            if (overlapsHorizontally && overlapsVertically) {
                 this.dogCaught = true;
                 this.birdEscapeDirection = this.birdfly.x < 0 ? -1 : 1;
                 const halfFieldWidth = this.gameFieldWidth / 2;
