@@ -81,6 +81,8 @@ export class Game extends Scene
     dpadScale = 1;
     dpadButtons = {};
     dpadPositions = {};
+    dpadJoystickState = { up: false, left: false, down: false, right: false };
+    dpadJoystickPointerId = null;
     letterButtonOverlays = {};
     dpadPointerState = {
         up: false,
@@ -161,6 +163,8 @@ export class Game extends Scene
         this.dpadScale = 1;
         this.dpadButtons = {};
         this.dpadPositions = {};
+        this.dpadJoystickState = { up: false, left: false, down: false, right: false };
+        this.dpadJoystickPointerId = null;
         this.letterButtonOverlays = {};
         this.dpadPointerState = {
             up: false,
@@ -681,6 +685,57 @@ export class Game extends Scene
             this.dpadButtons[direction] = button;
         });
 
+        const joystickX = toCanvasX(111);
+        const joystickY = toCanvasY(254);
+        const joystickHitArea = this.add.circle(
+            joystickX,
+            joystickY,
+            25 * overlayScale,
+            0x000000,
+            0
+        ).setDepth(9).setScrollFactor(0).setInteractive({ useHandCursor: true });
+
+        const moveJoystick = (pointer) => {
+            if (pointer.id !== this.dpadJoystickPointerId) {
+                return;
+            }
+
+            const dx = pointer.x - joystickX;
+            const dy = pointer.y - joystickY;
+            const deadZone = 12 * overlayScale;
+
+            this.dpadJoystickState = {
+                up: dy < -deadZone && Math.abs(dy) >= Math.abs(dx) * 0.45,
+                left: dx < -deadZone && Math.abs(dx) >= Math.abs(dy) * 0.45,
+                down: dy > deadZone && Math.abs(dy) >= Math.abs(dx) * 0.45,
+                right: dx > deadZone && Math.abs(dx) >= Math.abs(dy) * 0.45
+            };
+            this.updateDPadVisualState();
+        };
+
+        const releaseJoystick = (pointer) => {
+            if (pointer.id !== this.dpadJoystickPointerId) {
+                return;
+            }
+
+            this.dpadJoystickPointerId = null;
+            this.dpadJoystickState = { up: false, left: false, down: false, right: false };
+            this.updateDPadVisualState();
+        };
+
+        joystickHitArea.on('pointerdown', (pointer) => {
+            this.dpadJoystickPointerId = pointer.id;
+            moveJoystick(pointer);
+        });
+        this.input.on('pointermove', moveJoystick);
+        this.input.on('pointerup', releaseJoystick);
+        this.input.on('pointerupoutside', releaseJoystick);
+        this.events.once('shutdown', () => {
+            this.input.off('pointermove', moveJoystick);
+            this.input.off('pointerup', releaseJoystick);
+            this.input.off('pointerupoutside', releaseJoystick);
+        });
+
         const letterButtons = {
             X: { x: 875, y: 175 },
             Y: { x: 818, y: 233 },
@@ -802,10 +857,10 @@ export class Game extends Scene
         }
 
         return {
-            up: this.cursors.up.isDown || this.wasdKeys.up.isDown || this.dpadPointerState.up,
-            left: this.cursors.left.isDown || this.wasdKeys.left.isDown || this.dpadPointerState.left,
-            down: this.cursors.down.isDown || this.wasdKeys.down.isDown || this.dpadPointerState.down,
-            right: this.cursors.right.isDown || this.wasdKeys.right.isDown || this.dpadPointerState.right,
+            up: this.cursors.up.isDown || this.wasdKeys.up.isDown || this.dpadPointerState.up || this.dpadJoystickState.up,
+            left: this.cursors.left.isDown || this.wasdKeys.left.isDown || this.dpadPointerState.left || this.dpadJoystickState.left,
+            down: this.cursors.down.isDown || this.wasdKeys.down.isDown || this.dpadPointerState.down || this.dpadJoystickState.down,
+            right: this.cursors.right.isDown || this.wasdKeys.right.isDown || this.dpadPointerState.right || this.dpadJoystickState.right,
         };
     }
 
