@@ -14,6 +14,10 @@ export class MenuScene extends Scene {
             frameWidth: 32,
             frameHeight: 32
         });
+        this.load.spritesheet('menuPigeon', 'pigeon_eat-Sheet.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
     }
 
     create() {
@@ -39,6 +43,24 @@ export class MenuScene extends Scene {
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
+        // pigeon sprite
+        if (!this.anims.exists('menu-pigeon-eat')) {
+            this.anims.create({
+                key: 'menu-pigeon-eat',
+                frames: this.anims.generateFrameNumbers('menuPigeon', { start: 0, end: 3 }),
+                frameRate: 5,
+                repeat: -1
+            });
+        }
+
+        const pigeon = this.add.sprite(cx + screenW * 0.105, bgHeight * 0.17, 'menuPigeon');
+        pigeon.setScale(1);
+        pigeon.setFlipX(true);
+        pigeon.setOrigin(1, 0.8);
+        pigeon.setDepth(3);
+        pigeon.play('menu-pigeon-eat');
+
+        // dog sprite
         if (!this.anims.exists('menu-dog-walk-left')) {
             this.anims.create({
                 key: 'menu-dog-walk-left',
