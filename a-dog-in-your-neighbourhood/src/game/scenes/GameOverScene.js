@@ -10,9 +10,11 @@ export class GameOverScene extends Scene {
         this.load.setPath('assets');
         this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('nightField', 'night_field.jpg');
+        this.load.audio('click', 'audio/click.mp3');
     }
 
     create(data = {}) {
+        const clickSfx = this.sound.add('click', { volume: 0.5 });
         // ds overlay
         const cx = DESIGN_WIDTH / 2;
 
@@ -55,13 +57,14 @@ export class GameOverScene extends Scene {
         }).setOrigin(0.5);
 
         const playAgainButton = this.add.dom(cx, DS_TOP_SCREEN.y + 235).createFromHTML(`
-            <button type="button" style="border: 0; padding: 0; background: transparent; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
+            <button type="button" style="display: inline-block; width: fit-content; height: auto; border: 0; margin: 0; padding: 0; line-height: 1; background: transparent; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
         `);
         playAgainButton.setOrigin(0.5);
         playAgainButton.setDepth(10);
 
         const playAgainLink = playAgainButton.node.querySelector('button');
         playAgainLink.addEventListener('click', () => {
+            clickSfx.play();
             this.scene.start('MenuScene');
         });
         this.input.keyboard.disableGlobalCapture(); // Allows keys to function normally
