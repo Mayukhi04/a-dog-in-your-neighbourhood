@@ -142,8 +142,10 @@ export class Game extends Scene
         });
 
         this.load.json('roadMaze', '../road_maze.json');
-        for (const city of CITIES) {
-            this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json`);
+        if (import.meta.env.VITE_GITHUB_PAGES === 'true') {
+            for (const city of CITIES) {
+                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json`);
+            }
         }
 
         this.load.image('meat', 'meat.png');
