@@ -27,6 +27,7 @@ export class Game extends Scene
     meatHasSpawned = false;
     meatCollectedCount = 0;
     postman;
+    postmanScale = 0.07;
     postmanCrossingStarted = false;
     postmanFollowTriggered = false;
     postmanFollowDistance = 0;
@@ -113,6 +114,7 @@ export class Game extends Scene
         this.score = 0;
         this.meatCollectedCount = 0;
         this.postman = null;
+        this.postmanScale = 0.07;
         this.postmanCrossingStarted = false;
         this.postmanFollowTriggered = false;
         this.postmanFollowDistance = 0;
@@ -531,7 +533,7 @@ export class Game extends Scene
         
 
         this.postman = this.add.sprite(10,50,'postman');
-        this.postman.setScale(0.04);
+        this.postman.setScale(this.postmanScale);
         this.postman.setVisible(false);
         gameContainer.add(this.postman);
 
@@ -1423,11 +1425,11 @@ export class Game extends Scene
 
         if (!this.postman) {
             this.postman = this.add.sprite(10, 50, 'postman');
-            this.postman.setScale(0.1);
             this.postman.setVisible(false);
             this.gameContainer.add(this.postman);
         }
 
+        this.postman.setScale(this.postmanScale);
         this.postmanCrossingStarted = true;
         this.postmanTripTriggered = false;
         this.postman.setPosition(route[0].x, route[0].y + this.postmanRoadOffsetY);
