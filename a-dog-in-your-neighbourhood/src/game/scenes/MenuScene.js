@@ -354,7 +354,10 @@ export class MenuScene extends Scene {
                 }
 
                 errorText.textContent = '';
-                this.scene.start('Game', { city: selectedCity, hardMode: false });
+                this.scene.start('Game', {
+                    city: selectedCity,
+                    hardMode: this.hardModeEnabled
+                });
                 return;
             }
 
