@@ -42,6 +42,8 @@ export class Game extends Scene
     postmanOverlapBufferUntil = 0;
     postmanYipNextTime = 0;
     postmanRedFlash = null;
+    postmanSFX = null;
+    postmanRoadOffsetY = -22;
     postmanDirectionX = 1;
     postmanDirectionY = 0;
     cat;
@@ -126,6 +128,8 @@ export class Game extends Scene
         this.postmanOverlapBufferUntil = 0;
         this.postmanYipNextTime = 0;
         this.postmanRedFlash = null;
+        this.postmanSFX = null;
+        this.postmanRoadOffsetY = -22;
         this.postmanDirectionX = 1;
         this.postmanDirectionY = 0;
         this.cat = null;
@@ -215,6 +219,7 @@ export class Game extends Scene
         this.load.audio('hawk', 'audio/hawk.mp3');
         this.load.audio('meow', 'audio/meow.mp3');
         this.load.audio('purr', 'audio/purr.mp3');
+        this.load.audio('postman', 'audio/postman.mp3');
     }
 
     create (data = {})
@@ -228,10 +233,16 @@ export class Game extends Scene
         });
 
         this.bgMusic.play();
+        this.postmanSFX = this.sound.add('postman', {
+            volume: 5,
+            loop: true
+        });
         this.events.once('shutdown', () => {
             this.bgMusic.stop();
             this.bgMusic.destroy();
             this.purrSFX?.stop();
+            this.postmanSFX?.stop();
+            this.postmanSFX?.destroy();
         });
 
         this.chompSFX = this.sound.add('chomp_theme', {
@@ -276,9 +287,16 @@ export class Game extends Scene
         const gameW = 1024;
         const gameH = 768;
 
-        this.postmanRedFlash = this.add.rectangle(0, 0, gameW, gameH, 0xff3d3d, 0);
+        this.postmanRedFlash = this.add.rectangle(
+            DS_BOTTOM_SCREEN.x + DS_BOTTOM_SCREEN.width / 2,
+            DS_BOTTOM_SCREEN.y + DS_BOTTOM_SCREEN.height / 2,
+            DS_BOTTOM_SCREEN.width,
+            DS_BOTTOM_SCREEN.height,
+            0xff3d3d,
+            0
+        );
         this.postmanRedFlash.setOrigin(0.5);
-        this.postmanRedFlash.setDepth(60);
+        this.postmanRedFlash.setDepth(8);
         this.postmanRedFlash.setVisible(true);
 
         const gameScale = Math.min(
@@ -326,8 +344,6 @@ export class Game extends Scene
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
-        this.postmanRedFlash.setPosition(0, 0);
-        gameContainer.add(this.postmanRedFlash);
 
         this.timer = this.add.text(gameW / 2 - 24, -gameH / 2 + 42, `${this.timerVal}`, {
             fontFamily: 'PixelFont',
@@ -407,7 +423,6 @@ export class Game extends Scene
         });
 
         gameContainer.add(graphics);
-        gameContainer.add(this.postmanRedFlash);
 
         // populate road segments list with container-scaled lines
         for (const road of mapData.roads) {
@@ -515,7 +530,7 @@ export class Game extends Scene
         
 
         this.postman = this.add.sprite(10,50,'postman');
-        this.postman.setScale(0.07);
+        this.postman.setScale(0.04);
         this.postman.setVisible(false);
         gameContainer.add(this.postman);
 
@@ -1067,7 +1082,7 @@ export class Game extends Scene
                 this.postman.y - this.puppy.y
             );
 
-            if (directDistance <= 18) {
+            if (directDistance <= 42) {
                 this.postmanFollowTriggered = true;
                 this.postmanTripTriggered = true;
                 this.postmanFollowChaseUntil = this.time.now + 3000;
@@ -1091,11 +1106,13 @@ export class Game extends Scene
             );
             const chaseActive = this.time.now < this.postmanFollowChaseUntil;
 
-            if (this.postmanRedFlash) {
-                this.postmanRedFlash.setAlpha(chaseActive ? 0.55 : 0);
-            }
-
             if (chaseActive) {
+                this.postmanRedFlash?.setFillStyle(0xff3d3d, 1);
+                this.postmanRedFlash?.setAlpha(0.4);
+                if (this.postmanSFX && !this.postmanSFX.isPlaying) {
+                    this.postmanSFX.play();
+                }
+
                 if (this.time.now >= this.postmanYipNextTime) {
                     this.yipSFX?.play();
                     this.postmanYipNextTime = this.time.now + 300;
@@ -1134,6 +1151,7 @@ export class Game extends Scene
             if (this.postmanRedFlash) {
                 this.postmanRedFlash.setAlpha(0);
             }
+            this.postmanSFX?.stop();
             this.puppy.anims.stop();
             this.puppy.setFrame(1);
             this.lastMovedTime = this.time.now;
@@ -1370,7 +1388,7 @@ export class Game extends Scene
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score % 3 == 0) {
+        if (this.score >= 5 && Math.random() < 1 / 3) {
             this.startPostmanCrossing();
         }
     }
@@ -1388,16 +1406,18 @@ export class Game extends Scene
 
         if (!this.postman) {
             this.postman = this.add.sprite(10, 50, 'postman');
-            this.postman.setScale(0.07);
+            this.postman.setScale(0.1);
             this.postman.setVisible(false);
             this.gameContainer.add(this.postman);
         }
 
         this.postmanCrossingStarted = true;
         this.postmanTripTriggered = false;
-        this.postman.setPosition(route[0].x, route[0].y);
-        this.postmanLastDetectionPosition = { x: route[0].x, y: route[0].y };
+        this.postman.setPosition(route[0].x, route[0].y + this.postmanRoadOffsetY);
+        this.postmanLastDetectionPosition = { x: this.postman.x, y: this.postman.y };
         this.postman.setVisible(true);
+        this.postmanSFX.stop();
+        this.postmanSFX.play();
         this.movePostmanAlongRoute(route, 1);
     }
 
@@ -1473,7 +1493,7 @@ export class Game extends Scene
         }
 
         const destination = index < route.length
-            ? route[index]
+            ? { x: route[index].x, y: route[index].y + this.postmanRoadOffsetY }
             : {
                 x: this.gameFieldWidth / 2 + this.postman.displayWidth / 2,
                 y: this.postman.y
@@ -1484,6 +1504,7 @@ export class Game extends Scene
             if (index < route.length) {
                 this.movePostmanAlongRoute(route, index + 1);
             } else {
+                this.postmanSFX?.stop();
                 this.postman.destroy();
                 this.postman = null;
             }
@@ -1512,6 +1533,7 @@ export class Game extends Scene
                     this.postmanFollowLastPosition = null;
                     this.postmanFollowTarget = null;
                     this.postmanLastDetectionPosition = null;
+                    this.postmanSFX?.stop();
                     this.postman?.destroy();
                     this.postman = null;
                 }
