@@ -31,9 +31,17 @@ export class Game extends Scene
     postmanFollowTriggered = false;
     postmanFollowDistance = 0;
     postmanFollowMaxDistance = 400;
+    postmanFollowDelayUntil = 0;
+    postmanFollowChaseUntil = 0;
     postmanFollowLastPosition = null;
     postmanLastDetectionPosition = null;
     postmanFollowTarget = null;
+    postmanFollowRoute = [];
+    postmanFollowRouteIndex = 0;
+    postmanTripTriggered = false;
+    postmanOverlapBufferUntil = 0;
+    postmanYipNextTime = 0;
+    postmanRedFlash = null;
     postmanDirectionX = 1;
     postmanDirectionY = 0;
     cat;
@@ -51,7 +59,10 @@ export class Game extends Scene
     timerFlashUntil = 0;
     timerFlashSuffix = '';
     gameContainer;
+    pauseScreenFilter;
+    pauseIcon;
     gameOverBirdLaunched = false;
+    isGamePaused = false;
   
     roadSegments = [];
     connectedRoadSegments = [];
@@ -65,6 +76,7 @@ export class Game extends Scene
     dpadScale = 1;
     dpadButtons = {};
     dpadPositions = {};
+    letterButtonOverlays = {};
     dpadPointerState = {
         up: false,
         left: false,
@@ -103,9 +115,17 @@ export class Game extends Scene
         this.postmanFollowTriggered = false;
         this.postmanFollowDistance = 0;
         this.postmanFollowMaxDistance = 400;
+        this.postmanFollowDelayUntil = 0;
+        this.postmanFollowChaseUntil = 0;
         this.postmanFollowLastPosition = null;
         this.postmanLastDetectionPosition = null;
         this.postmanFollowTarget = null;
+        this.postmanFollowRoute = [];
+        this.postmanFollowRouteIndex = 0;
+        this.postmanTripTriggered = false;
+        this.postmanOverlapBufferUntil = 0;
+        this.postmanYipNextTime = 0;
+        this.postmanRedFlash = null;
         this.postmanDirectionX = 1;
         this.postmanDirectionY = 0;
         this.cat = null;
@@ -119,15 +139,19 @@ export class Game extends Scene
         this.timerFlashUntil = 0;
         this.timerFlashSuffix = '';
         this.gameOverBirdLaunched = false;
+        this.isGamePaused = false;
         this.roadSegments = [];
         this.connectedRoadSegments = [];
         this.connectedRoadSet = new Set();
         this.reachableRoadSegments = [];
         this.gameContainer = null;
+        this.pauseScreenFilter = null;
+        this.pauseIcon = null;
         this.dsOverlay = null;
         this.dpadScale = 1;
         this.dpadButtons = {};
         this.dpadPositions = {};
+        this.letterButtonOverlays = {};
         this.dpadPointerState = {
             up: false,
             left: false,
@@ -138,6 +162,7 @@ export class Game extends Scene
 
     preload ()
     {
+        const cacheBust = `?cacheBust=${Date.now()}`;
         this.load.setPath('assets');
         
         this.load.image('overlay', 'ds_bottom.jpeg');
@@ -165,10 +190,10 @@ export class Game extends Scene
             frameHeight: 32
         });
 
-        this.load.json('roadMaze', '../road_maze.json');
+        this.load.json('roadMaze', `../road_maze.json${cacheBust}`);
         if (import.meta.env.VITE_GITHUB_PAGES === 'true') {
             for (const city of CITIES) {
-                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json`);
+                this.load.json(`cityMap-${city.value}`, `../saved_locations/${city.value}.json${cacheBust}`);
             }
         }
 
@@ -251,6 +276,11 @@ export class Game extends Scene
         const gameW = 1024;
         const gameH = 768;
 
+        this.postmanRedFlash = this.add.rectangle(0, 0, gameW, gameH, 0xff3d3d, 0);
+        this.postmanRedFlash.setOrigin(0.5);
+        this.postmanRedFlash.setDepth(60);
+        this.postmanRedFlash.setVisible(true);
+
         const gameScale = Math.min(
             DS_BOTTOM_SCREEN.width / gameW,
             DS_BOTTOM_SCREEN.height / gameH
@@ -264,6 +294,29 @@ export class Game extends Scene
         gameContainer.setScale(gameScale);
         gameContainer.setDepth(1);
         this.gameContainer = gameContainer;
+        this.pauseScreenFilter = this.add.rectangle(
+            containerX,
+            containerY,
+            DS_BOTTOM_SCREEN.width,
+            DS_BOTTOM_SCREEN.height,
+            0xffffff,
+            0.35
+        ).setDepth(5).setVisible(false);
+        this.pauseIcon = this.add.graphics({ x: containerX, y: containerY })
+            .setDepth(6)
+            .setVisible(false);
+        const drawPauseBar = (x) => {
+            this.pauseIcon.fillStyle(0x35633a, 0.9);
+            this.pauseIcon.fillRect(x - 4, -14, 8, 3);
+            this.pauseIcon.fillRect(x - 6, -11, 12, 22);
+            this.pauseIcon.fillRect(x - 4, 11, 8, 3);
+
+            this.pauseIcon.fillStyle(0x9acb7d, 0.9);
+            this.pauseIcon.fillRect(x - 2, -11, 4, 22);
+        };
+
+        drawPauseBar(-7);
+        drawPauseBar(7);
 
         const tilesW = gameW;
         this.gameFieldWidth = tilesW;
@@ -273,6 +326,8 @@ export class Game extends Scene
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
+        this.postmanRedFlash.setPosition(0, 0);
+        gameContainer.add(this.postmanRedFlash);
 
         this.timer = this.add.text(gameW / 2 - 24, -gameH / 2 + 42, `${this.timerVal}`, {
             fontFamily: 'PixelFont',
@@ -292,7 +347,7 @@ export class Game extends Scene
 
         // Get the exported road data
         const mapKey = data.city ? `cityMap-${data.city}` : 'roadMaze';
-        const mapData = this.cache.json.get(mapKey);
+        const mapData = data.generatedMap || this.cache.json.get(mapKey);
 
         if (!mapData || !mapData.roads) {
             console.error(`Map data could not be loaded for "${data.city ?? 'postcode'}".`);
@@ -352,6 +407,7 @@ export class Game extends Scene
         });
 
         gameContainer.add(graphics);
+        gameContainer.add(this.postmanRedFlash);
 
         // populate road segments list with container-scaled lines
         for (const road of mapData.roads) {
@@ -555,7 +611,7 @@ export class Game extends Scene
                 0.9
             );
 
-            button.setStrokeStyle(3 * overlayScale, 0x0d0f12, 1);
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
             button.setDepth(10);
             button.setScrollFactor(0);
             button.setInteractive({ useHandCursor: true });
@@ -578,7 +634,97 @@ export class Game extends Scene
             this.dpadButtons[direction] = button;
         });
 
+        const letterButtons = {
+            X: { x: 875, y: 175 },
+            Y: { x: 818, y: 233 },
+            A: { x: 932, y: 233 },
+            B: { x: 875, y: 291 }
+        };
+
+        Object.entries(letterButtons).forEach(([letter, position]) => {
+            const x = toCanvasX(position.x);
+            const y = toCanvasY(position.y);
+            const button = this.add.circle(
+                x,
+                y,
+                26 * overlayScale,
+                defaultColour,
+                0.72
+            );
+
+            button.setStrokeStyle(2 * overlayScale, 0x090a0d, 0.9);
+            button.setDepth(10);
+            button.setScrollFactor(0);
+            button.setInteractive({ useHandCursor: true });
+
+            let isPressed = false;
+            const setPressedState = (pressed) => {
+                isPressed = pressed;
+                button.setFillStyle(pressed ? 0x4a4e55 : defaultColour, pressed ? 0.9 : 0.72);
+                button.setPosition(x, y + (pressed ? 2 * overlayScale : 0));
+            };
+
+            button.on('pointerdown', () => setPressedState(true));
+            button.on('pointerup', () => {
+                if (!isPressed) {
+                    return;
+                }
+
+                setPressedState(false);
+                this.handleLetterButtonPress(letter);
+            });
+            button.on('pointerout', () => setPressedState(false));
+            button.on('pointerupoutside', () => setPressedState(false));
+
+            this.letterButtonOverlays[letter] = button;
+        });
+
         this.updateDPadVisualState();
+    }
+
+    handleLetterButtonPress (letter)
+    {
+        switch (letter) {
+            case 'A':
+                this.yipSFX.play();
+                break;
+            case 'B':
+                if (!this.isTransitioning) {
+                    this.isTransitioning = true;
+                    this.input.keyboard.clearCaptures();
+                    this.input.keyboard.removeAllListeners();
+                    this.scene.start('MenuScene');
+                }
+                break;
+            case 'X':
+                this.sound.mute = !this.sound.mute;
+                break;
+            case 'Y':
+                this.toggleGamePause();
+                break;
+            default:
+                console.warn(`Unknown DS button: ${letter}`);
+        }
+    }
+
+    toggleGamePause ()
+    {
+        this.isGamePaused = !this.isGamePaused;
+        this.pauseScreenFilter.setVisible(this.isGamePaused);
+        this.pauseIcon.setVisible(this.isGamePaused);
+
+        if (this.isGamePaused) {
+            this.time.paused = true;
+            this.tweens.pauseAll();
+            this.anims.pauseAll();
+            this.sound.pauseAll();
+            return;
+        }
+
+        this.time.paused = false;
+        this.tweens.resumeAll();
+        this.anims.resumeAll();
+        this.sound.resumeAll();
     }
 
     getDPadState ()
@@ -608,11 +754,11 @@ export class Game extends Scene
             const button = this.dpadButtons[direction];
             const active = state[direction];
 
-            button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
-            button.setStrokeStyle(3 * this.dpadScale, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setFillStyle(active ? 0x4a4e55 : 0x2f3135, active ? 0.9 : 0.72);
+            button.setStrokeStyle(2 * this.dpadScale, 0x090a0d, 0.9);
             button.setPosition(
                 this.dpadPositions[direction].x,
-                this.dpadPositions[direction].y + (active ? 4 * this.dpadScale : 0)
+                this.dpadPositions[direction].y + (active ? 2 * this.dpadScale : 0)
             );
         }
 
@@ -633,6 +779,8 @@ export class Game extends Scene
 
     update (time, delta)
     {
+        if (this.isGamePaused) return;
+
         if (this.timerFlashUntil && time > this.timerFlashUntil) {
             this.timerFlashUntil = 0;
             this.timerFlashSuffix = '';
@@ -723,8 +871,6 @@ export class Game extends Scene
                     this.timerFlashUntil = time + 500;
                     this.timerFlashSuffix = '+';
                     this.timer.setText(`${this.timerVal}${this.timerFlashSuffix}`);
-                    this.score++;
-                    this.scoreText.setText(`Score: ${this.score}`);
                     this.spawnMeat();
                 }
             } else {
@@ -915,45 +1061,87 @@ export class Game extends Scene
         if (!this.cursors || !this.puppy) return;
         if (this.dogCaught) return;
 
-        if (this.postman?.visible && !this.postmanFollowTriggered) {
-            const previousPosition = this.postmanLastDetectionPosition || {
-                x: this.postman.x,
-                y: this.postman.y
-            };
-            const passDistance = this.getClosestPointOnSegment(
-                this.puppy.x,
-                this.puppy.y,
-                previousPosition.x,
-                previousPosition.y,
-                this.postman.x,
-                this.postman.y
-            ).distance;
+        if (this.postman?.visible && !this.postmanFollowTriggered && !this.postmanTripTriggered) {
+            const directDistance = Math.hypot(
+                this.postman.x - this.puppy.x,
+                this.postman.y - this.puppy.y
+            );
 
-            this.postmanLastDetectionPosition = { x: this.postman.x, y: this.postman.y };
-
-            if (passDistance <= 100) {
+            if (directDistance <= 18) {
                 this.postmanFollowTriggered = true;
+                this.postmanTripTriggered = true;
+                this.postmanFollowChaseUntil = this.time.now + 3000;
+                this.postmanOverlapBufferUntil = 0;
+                this.postmanYipNextTime = this.time.now + 250;
                 this.postmanFollowDistance = 0;
                 this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
-                this.updatePostmanFollowTarget();
+                this.postmanFollowTarget = { x: this.postman.x, y: this.postman.y };
+
+                const route = this.getPostmanRoute();
+                const routeIndex = this.getNearestRouteIndex(this.postman.x, this.postman.y, route);
+                this.postmanFollowRoute = route.slice(Math.max(0, routeIndex));
+                this.postmanFollowRouteIndex = 0;
             }
         }
 
-        if (
-            this.postmanFollowTriggered &&
-            this.postmanFollowDistance < this.postmanFollowMaxDistance &&
-            this.postman?.visible
-        ) {
-            const { x, y } = this.postmanFollowLastPosition;
-            this.postmanFollowDistance += Math.hypot(this.postman.x - x, this.postman.y - y);
-            this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
-            if (this.postman?.visible) {
-                this.updatePostmanFollowTarget();
+        if (this.postmanFollowTriggered && this.postman?.visible) {
+            const overlapDistance = Math.hypot(
+                this.postman.x - this.puppy.x,
+                this.postman.y - this.puppy.y
+            );
+            const chaseActive = this.time.now < this.postmanFollowChaseUntil;
+
+            if (this.postmanRedFlash) {
+                this.postmanRedFlash.setAlpha(chaseActive ? 0.55 : 0);
             }
-            if (this.postmanFollowDistance < this.postmanFollowMaxDistance) {
+
+            if (chaseActive) {
+                if (this.time.now >= this.postmanYipNextTime) {
+                    this.yipSFX?.play();
+                    this.postmanYipNextTime = this.time.now + 300;
+                }
+
+                if (overlapDistance <= 18) {
+                    this.postmanOverlapBufferUntil = this.time.now + 500;
+                    this.puppy.anims.stop();
+                    this.puppy.setFrame(1);
+                    return;
+                }
+
+                if (this.time.now < this.postmanOverlapBufferUntil) {
+                    this.puppy.anims.stop();
+                    this.puppy.setFrame(1);
+                    return;
+                }
+
+                this.updatePostmanFollowTarget();
                 this.followPostman(delta);
+
+                this.postmanFollowDistance += Math.hypot(
+                    this.postman.x - (this.postmanFollowLastPosition?.x ?? this.postman.x),
+                    this.postman.y - (this.postmanFollowLastPosition?.y ?? this.postman.y)
+                );
+                this.postmanFollowLastPosition = { x: this.postman.x, y: this.postman.y };
                 return;
             }
+
+            this.postmanFollowTriggered = false;
+            this.postmanFollowDistance = 0;
+            this.postmanFollowLastPosition = null;
+            this.postmanFollowTarget = null;
+            this.postmanOverlapBufferUntil = 0;
+            this.postmanYipNextTime = 0;
+            if (this.postmanRedFlash) {
+                this.postmanRedFlash.setAlpha(0);
+            }
+            this.puppy.anims.stop();
+            this.puppy.setFrame(1);
+            this.lastMovedTime = this.time.now;
+            return;
+        }
+
+        if (this.postmanRedFlash) {
+            this.postmanRedFlash.setAlpha(0);
         }
 
         const dpadState = this.getDPadState();
@@ -1106,64 +1294,43 @@ export class Game extends Scene
     }
 
     followPostman(delta) {
-        if (!this.puppy || !this.postmanFollowTarget) {
+        if (!this.puppy || this.postmanFollowRoute.length === 0) {
             return;
         }
 
-        const step = 220 * delta / 1000;
-        let bestMove = null;
-        let smallestRemainingDistance = Infinity;
-
-        for (const segment of this.roadSegments) {
-            const currentPoint = this.getClosestPointOnSegment(
-                this.puppy.x,
-                this.puppy.y,
-                segment.x1,
-                segment.y1,
-                segment.x2,
-                segment.y2
-            );
-            if (currentPoint.distance > this.roadWidthThreshold) {
-                continue;
-            }
-
-            const targetPoint = this.getClosestPointOnSegment(
-                this.postmanFollowTarget.x,
-                this.postmanFollowTarget.y,
-                segment.x1,
-                segment.y1,
-                segment.x2,
-                segment.y2
-            );
-            const dx = targetPoint.x - currentPoint.x;
-            const dy = targetPoint.y - currentPoint.y;
-            const distance = Math.hypot(dx, dy);
-            const moveDistance = Math.min(step, distance);
-            const x = distance === 0
-                ? currentPoint.x
-                : currentPoint.x + dx / distance * moveDistance;
-            const y = distance === 0
-                ? currentPoint.y
-                : currentPoint.y + dy / distance * moveDistance;
-            const remainingDistance = Math.hypot(
-                this.postmanFollowTarget.x - x,
-                this.postmanFollowTarget.y - y
-            );
-
-            if (remainingDistance < smallestRemainingDistance) {
-                smallestRemainingDistance = remainingDistance;
-                bestMove = { x, y, dx, dy };
-            }
-        }
-
-        if (!bestMove) {
+        const route = this.postmanFollowRoute;
+        const targetIndex = Math.min(this.postmanFollowRouteIndex, route.length - 1);
+        const target = route[targetIndex];
+        if (!target) {
             return;
         }
 
-        this.puppy.setPosition(bestMove.x, bestMove.y);
-        const anim = Math.abs(bestMove.dx) >= Math.abs(bestMove.dy)
-            ? (bestMove.dx < 0 ? 'walk-left' : 'walk-right')
-            : (bestMove.dy < 0 ? 'walk-up' : 'walk-down');
+        const dx = target.x - this.puppy.x;
+        const dy = target.y - this.puppy.y;
+        const distance = Math.hypot(dx, dy);
+        const step = this.moveSpeed * (delta / 1000) * 60;
+
+        if (distance <= step) {
+            this.puppy.setPosition(target.x, target.y);
+            if (this.postmanFollowRouteIndex < route.length - 1) {
+                this.postmanFollowRouteIndex += 1;
+            } else if (this.time.now >= this.postmanFollowChaseUntil) {
+                this.postmanFollowTriggered = false;
+                this.postmanFollowDistance = 0;
+                this.postmanFollowTarget = null;
+                this.postmanFollowRoute = [];
+                this.postmanFollowRouteIndex = 0;
+            }
+        } else {
+            const nextX = this.puppy.x + (dx / distance) * step;
+            const nextY = this.puppy.y + (dy / distance) * step;
+            this.puppy.setPosition(nextX, nextY);
+        }
+
+        const anim = Math.abs(dx) >= Math.abs(dy)
+            ? (dx < 0 ? 'walk-left' : 'walk-right')
+            : (dy < 0 ? 'walk-up' : 'walk-down');
+
         if (this.anims.exists(anim)) {
             this.puppy.play(anim, true);
             this.lastAnim = anim;
@@ -1180,16 +1347,36 @@ export class Game extends Scene
         };
     }
 
+    getNearestRouteIndex(x, y, route) {
+        if (!route || route.length === 0) {
+            return 0;
+        }
+
+        let nearestIndex = 0;
+        let nearestDistance = Infinity;
+
+        for (let i = 0; i < route.length; i++) {
+            const point = route[i];
+            const distance = Math.hypot(x - point.x, y - point.y);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+
+        return nearestIndex;
+    }
+
     addScore() {
         this.score++;
         this.scoreText.setText(`Score: ${this.score}`);
-        if (this.score % 10 == 0) {
+        if (this.score % 3 == 0) {
             this.startPostmanCrossing();
         }
     }
 
     startPostmanCrossing() {
-        if (this.postmanCrossingStarted || !this.postman || !this.gameContainer) {
+        if (this.postmanCrossingStarted || !this.gameContainer) {
             return;
         }
 
@@ -1199,7 +1386,15 @@ export class Game extends Scene
             return;
         }
 
+        if (!this.postman) {
+            this.postman = this.add.sprite(10, 50, 'postman');
+            this.postman.setScale(0.07);
+            this.postman.setVisible(false);
+            this.gameContainer.add(this.postman);
+        }
+
         this.postmanCrossingStarted = true;
+        this.postmanTripTriggered = false;
         this.postman.setPosition(route[0].x, route[0].y);
         this.postmanLastDetectionPosition = { x: route[0].x, y: route[0].y };
         this.postman.setVisible(true);
@@ -1308,6 +1503,15 @@ export class Game extends Scene
                 if (index < route.length) {
                     this.movePostmanAlongRoute(route, index + 1);
                 } else {
+                    this.postmanCrossingStarted = false;
+                    this.postmanFollowTriggered = false;
+                    this.postmanTripTriggered = false;
+                    this.postmanFollowDistance = 0;
+                    this.postmanFollowDelayUntil = 0;
+                    this.postmanFollowChaseUntil = 0;
+                    this.postmanFollowLastPosition = null;
+                    this.postmanFollowTarget = null;
+                    this.postmanLastDetectionPosition = null;
                     this.postman?.destroy();
                     this.postman = null;
                 }
@@ -1548,7 +1752,7 @@ export class Game extends Scene
             return;
         }
 
-        if (Math.random() >= 0.9) {
+        if (Math.random() >= 0.6) {
             return;
         }
 
