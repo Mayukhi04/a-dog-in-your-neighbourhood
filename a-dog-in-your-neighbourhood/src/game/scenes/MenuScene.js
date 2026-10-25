@@ -289,8 +289,11 @@ export class MenuScene extends Scene {
 
         if (isCityPickerMode) {
             postcodeInput.style.display = 'none';
+            randomPostcodeButton.style.display = 'none';
             cityPicker.style.display = 'block';
         } else {
+            postcodeInput.style.display = 'block';
+            randomPostcodeButton.style.display = 'inline-flex';
             cityPicker.style.display = 'none';
         }
 
