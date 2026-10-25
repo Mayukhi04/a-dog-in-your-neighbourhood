@@ -126,8 +126,19 @@ export class MenuScene extends Scene {
         const postcodeInput = form.node.querySelector('input');
         const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
+        const isFixedMapDeployment = import.meta.env.VITE_GITHUB_PAGES === 'true';
+
+        if (isFixedMapDeployment) {
+            postcodeInput.hidden = true;
+            errorText.hidden = true;
+        }
 
         const handleGenerate = async () => {
+            if (isFixedMapDeployment) {
+                this.scene.start('Game');
+                return;
+            }
+
             const postcode = (postcodeInput.value || '').trim();
 
             if (!postcode) {
