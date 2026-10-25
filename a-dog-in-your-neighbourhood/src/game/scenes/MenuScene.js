@@ -233,6 +233,12 @@ export class MenuScene extends Scene {
                         width: 280px;
                         font-family: 'PixelFont', sans-serif;
                     }
+                    #city-picker-row {
+                        display: none;
+                        align-items: center;
+                        gap: 10px;
+                        justify-content: center;
+                    }
                     #city-picker-trigger,
                     #city-picker-options button {
                         width: 100%;
@@ -285,11 +291,14 @@ export class MenuScene extends Scene {
                     <input type="text" placeholder="Please type your postcode here" value="" style="width: 280px; height: 42px; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 16px; text-transform: uppercase; padding: 0 8px; outline: none; box-sizing: border-box; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); appearance: none; -webkit-appearance: none; image-rendering: pixelated; -webkit-font-smoothing: none; font-smooth: none; text-rendering: geometricPrecision; filter: contrast(1.1) brightness(0.9) blur(0.2px); text-align: center;" />
                     <button id="random-postcode" type="button" aria-label="Random postcode" title="Random postcode" style="height: 42px; min-width: 42px; width: 42px; padding: 0; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; cursor:pointer; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); line-height: 1; display:flex; align-items:center; justify-content:center; background-image: url('/assets/falling_dice.png'); background-size: 72% 72%; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; image-rendering: crisp-edges; -ms-interpolation-mode: nearest-neighbor; filter: contrast(1.15) saturate(1.1); transform: translateZ(0);"> </button>
                 </div>
-                <div id="city-picker">
-                    <button id="city-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">Choose a city</button>
-                    <div id="city-picker-options" role="listbox" aria-label="Choose a city">
-                        ${CITIES.map(({ value, label }) => `<button type="button" role="option" data-city="${value}" aria-selected="false">${label}</button>`).join('')}
+                <div id="city-picker-row">
+                    <div id="city-picker">
+                        <button id="city-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">Choose a city</button>
+                        <div id="city-picker-options" role="listbox" aria-label="Choose a city">
+                            ${CITIES.map(({ value, label }) => `<button type="button" role="option" data-city="${value}" aria-selected="false">${label}</button>`).join('')}
+                        </div>
                     </div>
+                    <button id="random-city" type="button" aria-label="Random city" title="Random city" style="height: 42px; min-width: 42px; width: 42px; padding: 0; border: 4px solid rgba(255,255,255,0.9); border-radius: 0; background: rgba(24, 31, 42, 0.7); color: #ffffff; font-size: 18px; cursor:pointer; font-family: 'PixelFont', sans-serif; box-shadow: 0 0 0 2px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(255,255,255,0.18); line-height: 1; display:flex; align-items:center; justify-content:center; background-image: url('/assets/falling_dice.png'); background-size: 72% 72%; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; image-rendering: crisp-edges; filter: contrast(1.15) saturate(1.1); transform: translateZ(0);"> </button>
                 </div>
                 <div style="display:flex; justify-content:center; align-items:center; min-height: 28px;">
                     <span id="start-link" style="display: inline-block; width: fit-content; line-height: 1; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">START</span>
@@ -302,9 +311,11 @@ export class MenuScene extends Scene {
 
         const postcodeInput = form.node.querySelector('input');
         const cityPicker = form.node.querySelector('#city-picker');
+        const cityPickerRow = form.node.querySelector('#city-picker-row');
         const cityPickerTrigger = form.node.querySelector('#city-picker-trigger');
         const cityPickerOptions = form.node.querySelector('#city-picker-options');
         const randomPostcodeButton = form.node.querySelector('#random-postcode');
+        const randomCityButton = form.node.querySelector('#random-city');
         const submitButton = form.node.querySelector('#start-link');
         const errorText = form.node.querySelector('#postcode-error');
         const isCityPickerMode = import.meta.env.VITE_GITHUB_PAGES === 'true';
@@ -315,10 +326,14 @@ export class MenuScene extends Scene {
             postcodeInput.style.display = 'none';
             randomPostcodeButton.style.display = 'none';
             cityPicker.style.display = 'block';
+            cityPickerRow.style.display = 'flex';
+            randomCityButton.style.display = 'flex';
         } else {
             postcodeInput.style.display = 'block';
             randomPostcodeButton.style.display = 'inline-flex';
             cityPicker.style.display = 'none';
+            cityPickerRow.style.display = 'none';
+            randomCityButton.style.display = 'none';
         }
 
         const handleGenerate = async () => {
@@ -381,6 +396,21 @@ export class MenuScene extends Scene {
 
             const randomPostcode = postcodeCatalogue[Math.floor(Math.random() * postcodeCatalogue.length)];
             postcodeInput.value = randomPostcode.toUpperCase();
+            errorText.textContent = '';
+        });
+
+        randomCityButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            diceRollSfx.play();
+
+            const city = CITIES[Math.floor(Math.random() * CITIES.length)];
+            selectedCity = city.value;
+            cityPickerTrigger.textContent = city.label;
+            cityPickerTrigger.setAttribute('aria-expanded', 'false');
+            cityPickerOptions.classList.remove('open');
+            cityPickerOptions.querySelectorAll('[role="option"]').forEach((option) => {
+                option.setAttribute('aria-selected', String(option.dataset.city === selectedCity));
+            });
             errorText.textContent = '';
         });
 
