@@ -1,4 +1,5 @@
-import { Scene, Actions, Input} from 'phaser';
+import { Scene, Actions } from 'phaser';
+import { DS_BOTTOM_SCREEN, DESIGN_WIDTH } from '../layout';
 
 export class Game extends Scene
 {
@@ -8,6 +9,8 @@ export class Game extends Scene
     dogCaught = false;
     birdEscapeDirection = 0;
     birdEscapeTargetX = 0;
+    birdPuppyFollowOffset = 30;
+    birdEscapePauseElapsed = 0;
 
     moveSpeed = 3;
     lastAnim = 'walk-up';
@@ -47,6 +50,7 @@ export class Game extends Scene
     bgMusic;
 
     dsOverlay;
+    dpadScale = 1;
     dpadButtons = {};
     dpadPositions = {};
     dpadPointerState = {
@@ -69,6 +73,8 @@ export class Game extends Scene
         this.dogCaught = false;
         this.birdEscapeDirection = 0;
         this.birdEscapeTargetX = 0;
+        this.birdPuppyFollowOffset = 30;
+        this.birdEscapePauseElapsed = 0;
         this.moveSpeed = 3;
         this.lastAnim = 'walk-up';
         this.lastHorizontalDir = 'right';
@@ -95,13 +101,23 @@ export class Game extends Scene
         this.connectedRoadSet = new Set();
         this.reachableRoadSegments = [];
         this.gameContainer = null;
+        this.dsOverlay = null;
+        this.dpadScale = 1;
+        this.dpadButtons = {};
+        this.dpadPositions = {};
+        this.dpadPointerState = {
+            up: false,
+            left: false,
+            down: false,
+            right: false
+        };
     }
 
     preload ()
     {
         this.load.setPath('assets');
         
-        this.load.image('overlay', 'ds.jpeg');
+        this.load.image('overlay', 'ds_bottom.jpeg');
         this.load.image('field', 'red_flower.jpg')
 
         this.load.spritesheet('dog', 'dog.png', {
@@ -191,18 +207,11 @@ export class Game extends Scene
         });
 
         // ds overlay positioning
-        const screenW = this.cameras.main.width;
-        const screenH = this.cameras.main.height;
-        const cx = this.cameras.main.centerX;
-        const cy = this.cameras.main.centerY;
+        const cx = DESIGN_WIDTH / 2;
 
-        const source = this.textures.get('overlay').getSourceImage();
-        const aspectRatio = source.height / source.width;
-        const bgHeight = screenW * aspectRatio;
-
-        const dsOverlay = this.add.image(cx, screenH - (bgHeight / 2), 'overlay');
-        dsOverlay.setDisplaySize(screenW, bgHeight);
+        const dsOverlay = this.add.image(cx, 0, 'overlay').setOrigin(0.5, 0);
         dsOverlay.setDepth(0);
+        this.dsOverlay = dsOverlay;
 
         this.cameras.main.setScroll(0, 0);
 
@@ -210,11 +219,13 @@ export class Game extends Scene
         const gameW = 1024;
         const gameH = 768;
 
-        const usableHeight = screenH * 0.74;
-        const gameScale = Math.min(screenW / gameW, usableHeight / gameH);
+        const gameScale = Math.min(
+            DS_BOTTOM_SCREEN.width / gameW,
+            DS_BOTTOM_SCREEN.height / gameH
+        );
 
-        const containerX = cx;
-        const containerY = screenH - (gameH * gameScale / 2) - (screenH * 0.09);
+        const containerX = DS_BOTTOM_SCREEN.x + DS_BOTTOM_SCREEN.width / 2;
+        const containerY = DS_BOTTOM_SCREEN.y + DS_BOTTOM_SCREEN.height / 2;
 
         // container field background
         const gameContainer = this.add.container(containerX, containerY);
@@ -222,16 +233,16 @@ export class Game extends Scene
         gameContainer.setDepth(1);
         this.gameContainer = gameContainer;
 
-        const tilesW = gameW - 120;
+        const tilesW = gameW;
         this.gameFieldWidth = tilesW;
-        const tilesH = gameH - 100;
+        const tilesH = gameH;
         const fieldTiles = this.add.tileSprite(0, 0, tilesW, tilesH, 'field');
 
         fieldTiles.setTileScale(0.75, 0.75); 
 
         gameContainer.add(fieldTiles);
 
-        this.timer = this.add.text(containerX - 290, -containerY + 150, `${this.timerVal}`, {
+        this.timer = this.add.text(gameW / 2 - 24, -gameH / 2 + 42, `${this.timerVal}`, {
             fontFamily: 'PixelFont',
             fontSize: '52px',
             color: '#ffffff',
@@ -255,60 +266,58 @@ export class Game extends Scene
             return;
         }
 
-        // Scale the roads to fit within the existing game container
-        const shrink = 0.88;
-
         const fitScale = Math.min(
             gameW / mapData.width,
             gameH / mapData.height
         );
 
-        const roadScale = fitScale * shrink;
+        const roadScale = fitScale;
 
         // Centre the roads within the existing container
         const offsetX = -mapData.width * roadScale / 2;
         const offsetY = -mapData.height * roadScale / 2;
 
-        // Draw roads inside the game container
+        // Layer a darker edge under the yellow road surface for a defined outline.
         const graphics = this.add.graphics();
+        const drawRoads = (width, color) => {
+            graphics.lineStyle(width, color, 1);
 
-        graphics.lineStyle(10, 0xB69F66, 1);
+            for (const road of mapData.roads) {
+                if (road.length < 2) {
+                    continue;
+                }
 
-        for (const road of mapData.roads) {
-            if (road.length < 2) {
-                continue;
-            }
-
-            graphics.beginPath();
-
-            graphics.moveTo(
-                offsetX + road[0][0] * roadScale,
-                offsetY + road[0][1] * roadScale
-            );
-
-            for (let i = 1; i < road.length; i++) {
-                graphics.lineTo(
-                    offsetX + road[i][0] * roadScale,
-                    offsetY + road[i][1] * roadScale
+                graphics.beginPath();
+                graphics.moveTo(
+                    offsetX + road[0][0] * roadScale,
+                    offsetY + road[0][1] * roadScale
                 );
+
+                for (let i = 1; i < road.length; i++) {
+                    graphics.lineTo(
+                        offsetX + road[i][0] * roadScale,
+                        offsetY + road[i][1] * roadScale
+                    );
+                }
+
+                graphics.strokePath();
             }
+        };
 
-            graphics.strokePath();
-        }
+        drawRoads(16, 0xB18443);
+        drawRoads(10, 0xF2CC72);
 
-        // add road to container with visual effects
         graphics.enableFilters();
-
-        graphics.filters.internal.addPixelate(1);
+        graphics.filters.internal.addPixelate(0.5);
 
         Actions.AddEffectBloom(graphics, {
-            threshold: 0.3,
-            blurRadius: 2,
-            blurSteps: 2,
-            blendAmount: 1,
+            threshold: 0.7,
+            blurRadius: 1,
+            blurSteps: 1,
+            blendAmount: 0.25,
             useInternal: true
         });
-        
+
         gameContainer.add(graphics);
 
         // populate road segments list with container-scaled lines
@@ -317,12 +326,6 @@ export class Game extends Scene
                 continue;
             }
 
-            graphics.beginPath();
-            graphics.moveTo(
-                offsetX + road[0][0] * roadScale,
-                offsetY + road[0][1] * roadScale
-            );
-
             for (let i = 1; i < road.length; i++) {
                 const x1 = offsetX + road[i-1][0] * roadScale;
                 const y1 = offsetY + road[i-1][1] * roadScale;
@@ -330,10 +333,7 @@ export class Game extends Scene
                 const y2 = offsetY + road[i][1] * roadScale;
 
                 this.roadSegments.push({ x1, y1, x2, y2 });
-
-                graphics.lineTo(x2, y2);
             }
-            graphics.strokePath();
         }
 
         // calculate center of the road network and spawn the puppy there
@@ -487,33 +487,36 @@ export class Game extends Scene
 
     createDPadOverlay ()
     {
-        const baseX = this.cameras.main.width * 0.11;
-        const baseY = this.cameras.main.height * 0.45;
-
-        const buttonSize = 45;
-        const buttonSpacing = 60;
+        const source = this.textures.get('overlay').getSourceImage();
+        const overlayScale = this.dsOverlay.displayWidth / source.width;
+        this.dpadScale = overlayScale;
+        const toCanvasX = (x) => this.dsOverlay.x
+            + (x - source.width * this.dsOverlay.originX) * overlayScale;
+        const toCanvasY = (y) => this.dsOverlay.y
+            + (y - source.height * this.dsOverlay.originY) * overlayScale;
+        const buttonSize = 44 * overlayScale;
         const defaultColour = 0x2f3135;
 
-        const directions = ['up', 'left', 'down', 'right'];
+        const directions = {
+            up: { x: 111, y: 207 },
+            left: { x: 64, y: 254 },
+            down: { x: 111, y: 301 },
+            right: { x: 158, y: 254 }
+        };
 
-        directions.forEach((direction) => {
-            const offset = {
-                up: { x: 0, y: -buttonSpacing },
-                left: { x: -buttonSpacing, y: 0 },
-                down: { x: 0, y: buttonSpacing },
-                right: { x: buttonSpacing, y: 0 }
-            }[direction];
-
+        Object.entries(directions).forEach(([direction, position]) => {
+            const x = toCanvasX(position.x);
+            const y = toCanvasY(position.y);
             const button = this.add.rectangle(
-                baseX + offset.x,
-                baseY + offset.y,
+                x,
+                y,
                 buttonSize,
                 buttonSize,
                 defaultColour,
                 0.9
             );
 
-            button.setStrokeStyle(3, 0x0d0f12, 1);
+            button.setStrokeStyle(3 * overlayScale, 0x0d0f12, 1);
             button.setDepth(10);
             button.setScrollFactor(0);
             button.setInteractive({ useHandCursor: true });
@@ -529,8 +532,8 @@ export class Game extends Scene
             button.on('pointerupoutside', () => setPressedState(false));
 
             this.dpadPositions[direction] = {
-                x: baseX + offset.x,
-                y: baseY + offset.y
+                x,
+                y
             };
 
             this.dpadButtons[direction] = button;
@@ -567,10 +570,10 @@ export class Game extends Scene
             const active = state[direction];
 
             button.setFillStyle(active ? 0x4a4e55 : 0x2d3035);
-            button.setStrokeStyle(3, active ? 0xb9c0c8 : 0x090a0d, 1);
+            button.setStrokeStyle(3 * this.dpadScale, active ? 0xb9c0c8 : 0x090a0d, 1);
             button.setPosition(
                 this.dpadPositions[direction].x,
-                this.dpadPositions[direction].y + (active ? 4 : 0)
+                this.dpadPositions[direction].y + (active ? 4 * this.dpadScale : 0)
             );
         }
 
@@ -807,7 +810,18 @@ export class Game extends Scene
                 this.dogCaught = true;
                 this.birdEscapeDirection = this.birdfly.x < 0 ? -1 : 1;
                 const halfFieldWidth = this.gameFieldWidth / 2;
-                this.birdEscapeTargetX = this.birdEscapeDirection * (halfFieldWidth + 100);
+                const birdLeft = -this.birdfly.originX * this.birdfly.displayWidth;
+                const birdRight = (1 - this.birdfly.originX) * this.birdfly.displayWidth;
+                const puppyRelativeX = -this.birdEscapeDirection * this.birdPuppyFollowOffset;
+                const puppyLeft = puppyRelativeX - this.puppy.originX * this.puppy.displayWidth;
+                const puppyRight = puppyRelativeX
+                    + (1 - this.puppy.originX) * this.puppy.displayWidth;
+                const groupLeft = Math.min(birdLeft, puppyLeft);
+                const groupRight = Math.max(birdRight, puppyRight);
+
+                this.birdEscapeTargetX = this.birdEscapeDirection > 0
+                    ? halfFieldWidth - groupRight
+                    : -halfFieldWidth - groupLeft;
                 this.puppy.anims.stop();
                 this.puppy.setFrame(this.lastHorizontalDir === 'left' ? 51 : 3);
                 this.hawkSFX.play();
@@ -822,7 +836,7 @@ export class Game extends Scene
             this.birdfly.x += this.birdEscapeDirection * movement;
             this.birdfly.play(this.birdEscapeDirection < 0 ? 'flyingLeft' : 'flying', true);
             this.puppy.setPosition(
-                this.birdfly.x - this.birdEscapeDirection * 30,
+                this.birdfly.x - this.birdEscapeDirection * this.birdPuppyFollowOffset,
                 this.birdfly.y + 20
             );
         }
@@ -833,10 +847,14 @@ export class Game extends Scene
             !this.isTransitioning &&
             Math.abs(this.birdEscapeTargetX - this.birdfly.x) < 1
         ) {
-            this.isTransitioning = true;
-            this.input.keyboard.clearCaptures();
-            this.input.keyboard.removeAllListeners();
-            this.scene.start('GameOverScene', { score: this.score });
+            this.birdEscapePauseElapsed += delta;
+
+            if (this.birdEscapePauseElapsed >= 1000) {
+                this.isTransitioning = true;
+                this.input.keyboard.clearCaptures();
+                this.input.keyboard.removeAllListeners();
+                this.scene.start('GameOverScene', { score: this.score });
+            }
         }
 
         const isCurrentlyLayingDown = (this.lastMovedTime !== 0 && (time - this.lastMovedTime > 5000));

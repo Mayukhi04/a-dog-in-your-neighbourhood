@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
 
 export class MenuScene extends Scene {
     constructor() {
@@ -7,7 +8,7 @@ export class MenuScene extends Scene {
 
     preload() {
         this.load.setPath('assets');
-        this.load.image('menuBackground', 'ds.jpeg');
+        this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('menuField', 'field.jpeg');
 
         this.load.spritesheet('menuDog', 'dog.png', {
@@ -21,24 +22,23 @@ export class MenuScene extends Scene {
     }
 
     create() {
-        const screenW = this.cameras.main.width;
-        const screenH = this.cameras.main.height;
-        const cx = this.cameras.main.centerX;
-        const cy = this.cameras.main.centerY;
+        const cx = DESIGN_WIDTH / 2;
+        const cy = DESIGN_HEIGHT / 2;
 
-        const bgContainer = this.add.container(cx, 0);
+        const bgContainer = this.add.container(0, 0);
         bgContainer.setDepth(0);
 
-        const source = this.textures.get('menuBackground').getSourceImage();
-        const aspectRatio = source.height / source.width;
-        const bgHeight = screenW * aspectRatio;
-
-        const dsBg = this.add.image(0, bgHeight / 2, 'menuBackground');
-        dsBg.setDisplaySize(screenW, bgHeight);
+        const dsBg = this.add.image(cx, DESIGN_HEIGHT - 537, 'menuBackground')
+            .setOrigin(0.5, 0);
+        dsBg.setDisplaySize(DESIGN_WIDTH, 537);
         bgContainer.add(dsBg);
 
-        const fieldBg = this.add.image(0, bgHeight * 0.243, 'menuField');
-        fieldBg.setDisplaySize(screenW * 0.5, bgHeight * 0.375);
+        const fieldBg = this.add.image(
+            DS_TOP_SCREEN.x + DS_TOP_SCREEN.width / 2,
+            DS_TOP_SCREEN.y + DS_TOP_SCREEN.height / 2,
+            'menuField'
+        );
+        fieldBg.setDisplaySize(DS_TOP_SCREEN.width, DS_TOP_SCREEN.height);
         fieldBg.setOrigin(0.5);
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
@@ -53,10 +53,10 @@ export class MenuScene extends Scene {
             });
         }
 
-        const pigeon = this.add.sprite(cx + screenW * 0.105, cy - bgHeight * 0.085, 'menuPigeon');
+        const pigeon = this.add.sprite(0, 0, 'menuPigeon');
         pigeon.setScale(1);
         pigeon.setFlipX(true);
-        pigeon.setOrigin(1, 0.8);
+        pigeon.setOrigin(0.5, 0.8);
         pigeon.setDepth(3);
         pigeon.play('menu-pigeon-eat');
 
@@ -79,7 +79,11 @@ export class MenuScene extends Scene {
             });
         }
 
-        const dog = this.add.sprite(cx - screenW * 0.2, bgHeight * 0.3, 'menuDog');
+        const dog = this.add.sprite(
+            cx - DS_TOP_SCREEN.width * 0.4,
+            DS_TOP_SCREEN.y + DS_TOP_SCREEN.height * 0.63,
+            'menuDog'
+        );
         dog.setScale(2);
         dog.setOrigin(0.5, 0.8);
         dog.setDepth(3);
@@ -87,7 +91,7 @@ export class MenuScene extends Scene {
 
         this.tweens.add({
             targets: dog,
-            x: cx + screenW * 0.2,
+            x: cx + DS_TOP_SCREEN.width * 0.4,
             duration: 6500,
             ease: 'Linear',
             yoyo: true,
@@ -96,16 +100,24 @@ export class MenuScene extends Scene {
             onRepeat: () => dog.play('menu-dog-walk-right')
         });
 
-        this.add.text(cx, cy - 120, 'A Dog In Your Neighbourhood', {
+        const title = this.add.text(cx, DS_TOP_SCREEN.y + 66, 'A Dog In Your Neighbourhood', {
             fontFamily: 'PixelFont',
-            fontSize: '36px',
+            fontSize: '28px',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 6,
             align: 'center',
         }).setOrigin(0.5);
+        const titleContext = title.canvas.getContext('2d');
+        const lastOIndex = title.text.lastIndexOf('o');
+        const prefixWidth = titleContext.measureText(title.text.slice(0, lastOIndex)).width;
+        const lastOWidth = titleContext.measureText('o').width;
+        pigeon.setPosition(
+            title.x - title.width / 2 + prefixWidth + lastOWidth / 2,
+            title.y - title.height / 2 + 8
+        );
 
-        const form = this.add.dom(cx, cy + 180).createFromHTML(`
+        const form = this.add.dom(cx, DS_TOP_SCREEN.y + DS_TOP_SCREEN.height * 0.82 + 8).createFromHTML(`
             <div style="display:flex; flex-direction:column; align-items:center; gap:14px; font-family: 'PixelFont', sans-serif;">
                 <style>
                     input::placeholder {

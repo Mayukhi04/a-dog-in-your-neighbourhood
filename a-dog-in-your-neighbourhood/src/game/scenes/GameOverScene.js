@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { DS_TOP_SCREEN, DESIGN_HEIGHT, DESIGN_WIDTH } from '../layout';
 
 export class GameOverScene extends Scene {
     constructor() {
@@ -7,37 +8,35 @@ export class GameOverScene extends Scene {
 
     preload() {
         this.load.setPath('assets');
-        this.load.image('menuBackground', 'ds.jpeg');
+        this.load.image('menuBackground', 'ds_top.jpeg');
         this.load.image('nightField', 'night_field.jpg');
     }
 
     create(data = {}) {
         // ds overlay
-        const screenW = this.cameras.main.width;
-        const screenH = this.cameras.main.height;
-        const cx = this.cameras.main.centerX;
-        const cy = this.cameras.main.centerY;
+        const cx = DESIGN_WIDTH / 2;
 
-        const bgContainer = this.add.container(cx, 0);
+        const bgContainer = this.add.container(0, 0);
         bgContainer.setDepth(0);
 
-        const source = this.textures.get('menuBackground').getSourceImage();
-        const aspectRatio = source.height / source.width;
-        const bgHeight = screenW * aspectRatio;
-
-        const dsBg = this.add.image(0, bgHeight / 2, 'menuBackground');
-        dsBg.setDisplaySize(screenW, bgHeight);
+        const dsBg = this.add.image(cx, DESIGN_HEIGHT - 537, 'menuBackground')
+            .setOrigin(0.5, 0);
+        dsBg.setDisplaySize(DESIGN_WIDTH, 537);
         bgContainer.add(dsBg);
 
         // background + dog
-        const fieldBg = this.add.image(0, bgHeight * 0.243, 'nightField');
-        fieldBg.setDisplaySize(screenW * 0.5, bgHeight * 0.375);
+        const fieldBg = this.add.image(
+            DS_TOP_SCREEN.x + DS_TOP_SCREEN.width / 2,
+            DS_TOP_SCREEN.y + DS_TOP_SCREEN.height / 2,
+            'nightField'
+        );
+        fieldBg.setDisplaySize(DS_TOP_SCREEN.width, DS_TOP_SCREEN.height);
         fieldBg.setOrigin(0.5);
         fieldBg.setDepth(2);
         bgContainer.add(fieldBg);
 
         // menu text/play again button
-        this.add.text(cx, cy - 120, 'Game Over!', {
+        this.add.text(cx, DS_TOP_SCREEN.y + 90, 'Game Over!', {
             fontFamily: 'PixelFont',
             fontSize: '36px',
             color: '#ffffff',
@@ -46,7 +45,7 @@ export class GameOverScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
-        this.add.text(cx, cy - 55, `Score: ${data.score ?? 0}`, {
+        this.add.text(cx, DS_TOP_SCREEN.y + 160, `Score: ${data.score ?? 0}`, {
             fontFamily: 'PixelFont',
             fontSize: '24px',
             color: '#ffffff',
@@ -55,7 +54,7 @@ export class GameOverScene extends Scene {
             align: 'center',
         }).setOrigin(0.5);
 
-        const playAgainButton = this.add.dom(cx, cy).createFromHTML(`
+        const playAgainButton = this.add.dom(cx, DS_TOP_SCREEN.y + 235).createFromHTML(`
             <button type="button" style="border: 0; padding: 0; background: transparent; color: rgba(255,255,255,0.9); font-size: 22px; letter-spacing: 0.08em; cursor: pointer; text-decoration: none; transition: color 0.15s ease, opacity 0.15s ease; font-family: 'PixelFont', sans-serif;">PLAY AGAIN</button>
         `);
         playAgainButton.setOrigin(0.5);
